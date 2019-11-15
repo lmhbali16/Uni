@@ -1,0 +1,585 @@
+---
+title: "Module 3 Report"
+author: "480133780, 480378222, 480379414, 480398611"
+date: "10/11/2019"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    toc_depth: 4
+---
+
+
+***
+# Abstract
+***
+
+
+This module report analyses the aggregation of several datasets using ANOVA and evaluates the effectiveness of the kiwifruit extract treatment on the tenderness in red meat in conjunction with other factors, namely the muscle the sample is taken from, the ageing period and the cooking method. An ANOVA model was established to investigate the interactions between these factors. Interaction plots were made to further explore the significance of the interactions. Contrast plots were generated to assess the significance and meaningfulness of the differences between the means of tenderness scores of the meat samples with different combinations of treatment. These results suggests that the kiwifruit extract improves the tenderness in red meat, and consumers are highly likely to tell the differences between the meat, and such that they are able to eat more tender meat.
+
+***
+# Introduction
+***
+
+
+The aim of this report is to answer the question of whether kiwifruit extract treatment improves tenderness. This is the starting point of the investigation, then we move to assess if there is an interaction between treatment and other variables of interest, namely the muscle the sample is taken from, the ageing period and the cooking method. The next question is whether there are differences between cooking methods, between aging periods and between muscles. If so, then we ask whether sizes of the differences are significant. After answering all of these questions, we then explore if this makes a difference to the consumers.
+
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+library(plyr)
+library(ggpubr)
+library(cowplot)
+library(reshape)
+library(ggfortify)
+library(emmeans)
+library(tidyverse)
+library(dplyr)
+library(tibble)
+library(emmeans)
+library(ggfortify)
+library(knitr)
+library(kableExtra)
+library(car)
+library(broom)
+```
+
+***
+# DATA2902: Aggregation of datasets - Creating _Tenderness_ column
+***
+
+
+This code reads all the raw consumer level data into dataframes using _map_.
+
+```{r,message=FALSE, warning=FALSE}
+data = read_excel("infusions_data_2902.xlsx")
+myfiles <- list.files(path = "raw_consumer", pattern = ".xls")
+myfiles <- paste("./raw_consumer/",myfiles, sep ="")
+mydata <-  myfiles %>% map(.,read_xls, na="NA")
+# call in a second time because of different notation by collaborators
+filename = "Final_infusion.csv"
+
+mdata = read.csv(filename, header = T, na = c("NA",""," ")) %>%
+  janitor::clean_names()
+
+mdata = mdata[mdata$cut != "TDR062",]
+# glimpse(mdata)
+```
+After reading the data, we create our own function to aggregate the mean data for each product type. Again with the map function and our own function, a list of aggregate means are created. In the end we merge all the tables together and join that with the original table.
+
+```{r,message=FALSE, warning=FALSE}
+func <- function(x){
+  data_group <- x %>% group_by(prod) %>% dplyr::summarise(., mean = round(mean(tender,na.rm = TRUE)))
+  colnames(data_group) <- c("EQSRef", "Tender")
+  data_group
+}
+
+my_list = map(mydata, func)
+
+merged_group = merge_all(my_list)
+
+
+data <- left_join(data, merged_group, by="EQSRef")
+
+write.csv(data, file = "Final_infusion.csv")
+
+```
+
+
+
+```{r, message = FALSE, warning=FALSE}
+
+data = read_csv("Final_infusion.csv", na ="NA")
+data = data[data$CUT !="TDR062", ]
+data = data %>% janitor::clean_names()
+```
+
+
+```{r}
+kiwiq = data %>% filter(!is.na(trial_notes), !is.na(tender), !is.na(cut), !is.na(d_aged), !is.na(cook), !is.na(eqs_ref), !is.na(carcase_no), !is.na(key_1))
+```
+
+```{r}
+treat = kiwiq$trial_notes
+tender = kiwiq$tender
+cut = kiwiq$cut
+kiwiq$d_aged = factor(kiwiq$d_aged)
+d_aged = kiwiq$d_aged
+cook = kiwiq$cook
+eqs = kiwiq$eqs_ref
+carcase = kiwiq$carcase_no
+key1 = kiwiq$key_1
+
+trt_ten = data.frame(treat, tender, cut, d_aged, cook, eqs, carcase, key1)
+ctrl = trt_ten %>% 
+  filter(treat == "Control")
+trt = trt_ten %>% 
+  filter(treat!="Control")
+# trt_ten
+```
+
+***
+# The ANOVA Model
+***
+
+
+##4.1 Setting up the ANOVA model - _Backward variable selection_
+
+Just before we jump to the analysis of the differences between the tenderness scores, we need to set up an ANOVA model with the significant combinations as we are only interested in those pairs. The _backward variable selection_ method is adopted and is set out as follows.
+
+##4.2 _Step 1: Generating our first model_
+
+We start with our first model of a big two-way multi-factor ANOVA which has all factors in it and the block as well. We have three unique identifiers in our dataset: EQSRef, Carcase No. and KEY 1. They are categorical variables that are of no scientific interest, but they might help us explain some variations in our data. The _EQSRef_ (the unique sample identifier) is of no interest here as it is merely the numbering of the samples which would not make the estimate of the error variance more precise. _carcase_ is the same as _key1_, so we only need either one of them. We will be using _carcase_ as the blocking variable in our model.
+
+In order to adjust for the remaining two blocks, a two-way ANOVA test is ideal to be used.
+
+
+```{r, message = FALSE}
+mf = aov(tender ~ carcase + trial_notes*cut + trial_notes*d_aged + trial_notes*cook + cut*d_aged + cut*cook + d_aged*cook, data = kiwiq)
+car::Anova(mf, type = "II")
+```
+
+It is evident in the ANOVA table that the insignificant pairs are as follows, _treatment and ageing period_, _muscle and ageing period_ and _ageing period and cooking method_.
+
+
+##4.3 _Step 2: Removing insignificant combinations_
+
+We retain all of the significant pairs by removing the ones with p-values greater than 0.05, one at a time starting with the least significant ie _cut and ageing period_.
+
+```{r, message=FALSE}
+ms = aov(tender ~ carcase + trial_notes*cut + trial_notes*d_aged + trial_notes*cook + cut+d_aged + cut*cook + d_aged*cook, data = kiwiq)
+car::Anova(ms, type = "II")
+```
+
+Then we move on to remove _ageing period and cook_.
+
+```{r}
+ms = aov(tender ~ carcase + trial_notes*cut + trial_notes*d_aged + trial_notes*cook + cut+d_aged + cut*cook + d_aged+cook, data = kiwiq)
+car::Anova(ms, type = "II")
+```
+
+Note that the combination of _kiwi treatment and cook_ will be retained in our model because the p-value is not wildly big. This combination is statistically insignificant, but we will have to explore the significance in the interaction plots.
+
+Now we are ready to analyse the significant differences.
+
+
+***
+# 1. Primary Question: Kiwi and Tenderness
+***
+
+
+
+##1.1 Is there an interaction between kiwi extract and other factors? _(Kiwifruit Extract Treatment and Cooking Methods)_
+
+There are some factors which are of interest: the muscle that the sample is from ("cut"), the aging period of the sample ("d_aged") and how the muscle is cooked ("cook").
+
+###1.2 Interaction plot:
+
+In an interaction plot we can assess the potentially different effects that the levels of different independent variables have on one another. Similar or equal gradients across all levels indicates little or no interaction effect, while largely different gradients may indicate a significant interaction which should be accounted for in our ANOVA model.
+
+###1.2.1 Kiwi Extract:Cooking Method
+
+```{r}
+e_cook = emmeans(ms, ~ trial_notes + cook)
+# e_cook
+emmip(e_cook, cook ~ trial_notes) + theme_classic()+labs(col ="Cooking Methods")+ xlab("Type of Samples (Trial Notes)")+ ylab("Tenderness")+ggtitle("Emmip Plot for Tenderness and Cooking Method")
+
+```
+
+The interaction plot between trial notes and cooking method indicates differences in the effect meat enhancement and cooking type. RST-C2 and RST-C10have similar positive gradient. RST and GRL have larger positive gradients than the afforementioned cooking methods. GRL even crosses the RST line. This indicates a potentially significant interaction between enhancement and the various ways the meat was cooking 
+
+###1.2.2 Kiwi Extract:Cut
+
+
+```{r}
+e_cut = emmeans(ms, ~ trial_notes + cut)
+# e_cut
+emmip(e_cut, cut ~ trial_notes) + theme_classic()+labs(col = "Cut of Meat")+ xlab("Type of Samples (Trial Notes")+ylab("Tenderness")+ggtitle("Emmip Plot for Tenderness and Cut of Meat")
+
+```
+
+The interaction plot of trial notes and cut indicates a difference in tenderness for the two different cuts of meat. In terms of interaction, the two lines do not appear to be parallel, with STR045 (striploin) having a greater gradient than OUT005 (outer flat). This indicates an interaction between trial notes and cut. It can't be determined from the plot if this interaction is significant, however, we can determine this based on the anova model output.
+
+###1.2.3 Kiwi Extract:Aging Period
+
+```{r}
+e_age = emmeans(ms, ~ trial_notes + d_aged)
+# e_cut
+emmip(e_age, d_aged ~ trial_notes) + theme_classic()+labs(col = "Age")+ xlab("Type of Samples")+ylab("Tenderness Score")+ggtitle("Emmip Plot for Tenderness and Age")
+
+```
+
+The interaction plot of trial notes and days aged shows that the two aging periods almost converge. Meat aged for ten days has a greater gradient. This indicates an interaction between these two factors. Further, it indicates that the enhancement of the meat provides a greater proportional increase in meat aged for 10 days than it does in meat aged for 28 days.
+
+
+
+
+We can also use a formal test to assess if each of these interactions are significant.
+
+```{r}
+unique(mdata$cook)
+
+car::Anova(ms, type = "II")
+```
+
+We will perform this test for the interaction effect between kiwi extract and cooking method.
+
+###1.3 Is the kiwi extract:cooking method interaction significant?
+
+__Hypothesis__
+
+$H_{0}$: $(\alpha\gamma)_{ij}$ = 0 for i = 1,2 and j = 1,2,3,4
+
+$H_{1}$: At least one $(\alpha\gamma)_{ij} \neq 0$ 
+
+__Assumptions__
+
+check normality and equal variance w\ autoplot
+
+```{r}
+autoplot(ms, which = c(1,2))
+```
+
+Our previous question addressed the assumption of the ANOVA test. We know that the assumptions of this test are satisfied.
+
+
+__Test statistic__
+
+$T = \frac{Mean Sq Interaction}{Mean Sq Residual}$. Under $H_{0}, T$ ~$ F_{3, 871-4}$
+
+__Observed test statistic__
+
+$t_{0} =$ 2.9380
+
+__p-value__
+
+$P(T \geqslant t_{0})$ = $P(F_{3, 1040} \geqslant t_{0})$ =  0.032453
+
+The p-value is < 0.05 which indicates that the interaction effect is significant. Thus we reject the $H_0$.
+
+__Conclusion__
+
+We can conclude that at least one level of the kiwi treatment factor has a significant interaction with one of the levels of cooking method.
+
+
+The test for a significant interaction can be performed for the interactions between trial_note:cut with a p-value of 0.032453 and cut:cook with a p-value of 0.032453. Since these interactions are significant, we will account for them by including them in our anova model.
+
+
+
+***
+# Question 2: Tenderness and other factors
+***
+
+
+Note: we used our finalised model that includes individual factors and interactions. In these tests, we used the individual factors.
+
+##2.1 Which _cooking method_ is the best for tenderness?
+
+
+__Hypothesis__
+
+$H_{0}$: $\mu_{GRL} = \mu_{RST-C10} = \mu_{RST-C2} = \mu_{RST}$
+
+$H_{1}$:At least one of the  $\mu_{i} \neq \mu_{j}$
+
+__Assumptions__ 
+
+Observations are independent, have large enough sample size to rely on CLT and have equal variance.Each of the population is normal distributed.
+
+__Test statistic__
+
+$T = \frac{MeanSqInteraction}{MeanSResudial}$ under$H_0$ $T$ ~ $F_{3, 871-4}$
+
+__Observed test statistic__
+
+$t_{0}$ = 11.0702
+
+__p-value__
+
+$P(T \geq t_0)$ = 3.915e-07
+
+First, we plot the values to see if they follow normal distribution and have equal variance.
+
+```{r}
+
+fit1 = aov(tender ~ carcase + cook, data = kiwiq)
+a = autoplot(fit1, which = 1:2, size = 3, ad.size = 3, colour = "black")+theme_classic(base_size = 14)
+b = ggplot(data, aes(x = cook, y = tender))+geom_boxplot()+ggtitle("Tenderness for each Cooking Methods")+ylab("Tenderness")+xlab("Cooking Methods")+scale_x_discrete(labels= c("GRL" ="Grill", "RST"= "Roast", "RST-C10"="Roast cold 10mm", "RST-C2"="Roast cold 2mm"))
+a
+b
+
+```
+
+They look good enough to work with, and we can also rely on the Central Limit Theorem. Interestingly enough we can see that groups are formed. It could suggest that certain cooking methods contribute to tenderness itself.
+
+
+```{r}
+fit1_em = emmeans(ms, ~cook)
+
+contrast(fit1_em, method = "pairwise", adjust ="scheffe")
+
+a = contrast(fit1_em, adjust = "scheffe", method = "pairwise") %>% plot(colour = "black")+theme_classic(base_size = 10)+ggtitle("Contrast of Cooking Methods")+ylab("Cooking Method")
+
+b = plot(fit1_em, comparisons = TRUE)+ylab("Cooking Method")+ggtitle("Cooking methods")+xlab("emmean for Tenderness Score")
+ggarrange(a,b, nrow = 2)
+```
+
+We can see in these plots that there is not much of a difference in certain cooking methods (e.g. grilling and roasting 10mm slice makes almost no difference). Interestingly enough, it does matter how how thick the meat is when we roast by looking at the contrast plot (RST-C10 and RST-C2). Overall, RST-C2 method is suggested for better tenderness.
+
+Therefore, our plot and the p-value from our model (3.915e-07) reject the assumption that cooking method does not affect tenderness.
+
+##2.2 Which _part of the meat_ is the best for tenderness?
+
+
+__Hypothesis__
+
+$H_{0}$: $\mu_{OUT005} = \mu_{STR045}$
+
+$H_{1}$:$\mu_{OUT005} \neq \mu_{STR045}$
+
+__Assumptions__ 
+
+Observations are independent, have large enough sample size to rely on CLT and have equal variance.Each of the population is normal distributed.
+
+__Test statistic__
+
+$T = \frac{MeanSqInteraction}{MeanSResudial}$ under$H_0$ $T$ ~ $F_{1, 871-2}$
+
+__Observed test statistic__
+
+$t_{0}$ = 578.0871
+
+__p-value__
+
+$P(T \geq t_0)$ $<$ 2e-16
+
+
+Since we excluded tenderloin, there are two types of cut of meats left. From these plots, we can fairly say the values follow a normal distribution and the groups have equal variance. However their values are seemingly different.
+
+```{r}
+fit2 = aov(tender ~ carcase + cut, data = kiwiq)
+autoplot(fit2, which = 1:2, size = 3, ad.size = 3, colour = "black")+theme_classic(base_size = 14)
+ggplot(kiwiq, aes(x = cut, y = tender))+geom_boxplot()+ggtitle("Tenderness for Different Cuts of Meats")+ylab("Tenderness")+xlab("Cooking Methods")+scale_x_discrete(labels= c("OUT005" = "Outside flat", "STR045"= "Striploin"))
+```
+
+
+Since we are working with two groups only, we will not have a pairwise contrast plot. Even without it, this plots tells that striploin (STR045) has a higher tenderness score than outside flat meats (OUT005). Overall, the p-value (< 2.2e-16) and our plot reject the null hypothesis and having different cut of meat matters.
+
+```{r}
+fit2_em = emmeans(ms, ~cut)
+confint(fit2_em, adjust = "scheffe") %>% plot(colour = "black")+theme_classic(base_size = 10)+ggtitle("Meat Part and Its Tenderness")+xlab("emmean for Tenderness Score")
+```
+
+##2.3 Does _ageing period_ matter?
+
+__Hypothesis__
+
+$H_{0}$: $\mu_{10} = \mu_{28}$
+
+$H_{1}$: $\mu_{10} \neq \mu_{28}$
+
+__Assumptions__ 
+
+Observations are independent, have large enough sample size to rely on CLT and have equal variance.Each of the population is normal distributed.
+
+__Test statistic__
+
+$T = \frac{MeanSqInteraction}{MeanSResudial}$ under$H_0$ $T$ ~ $F_{1, 871-2}$
+
+__Observed test statistic__
+
+$t_{0}$ = 3.3067 
+
+__p-value__
+
+$P(T \geq t_0)$ $=$ 0.069351
+
+Even though, the data is not normal, we will proceed with the comparison. We will work with the fact that there are enough data point to rely on the  CLT.
+
+```{r}
+
+fit3 = aov(tender ~ d_aged+carcase,data =kiwiq)
+autoplot(fit3, which = 1:2, size = 3, ad.size = 3, colour = "black")+theme_classic(base_size = 14)
+
+ggplot(kiwiq, aes(x = d_aged, y = tender))+geom_boxplot()+ggtitle("Boxplot of Tenderness and Aging")+ylab("Tenderness")+xlab("Age")+scale_x_discrete(labels= c("10" = "10 days", "28"= "28 days"))
+```
+Since there are only two categories for aging, we will not do a pairwise comparison.
+
+```{r}
+
+fit3_em = emmeans(ms, ~ d_aged)
+confint(fit3_em, adjust = "scheffe") %>% plot(colour = "black")+theme_classic(base_size = 10)+ggtitle("Confidence Interval plot Based on Aging Period")+ylab("Dry Age")+xlab("emmean for Tenderness Score")
+```
+
+Even though, there is a difference between the aging for 10 days and aging for 28 days, it would be difficult to recognise which meat is older based on just tasting. The values are quite close to the mean value, and their tenderness is quite similar.
+
+Even the p-value from our model (0.069351) suggested that their mean value is the same, by keeping the null hypothesis.
+
+
+***
+# Question 3: Post hoc comparisons - _Significant Differences_
+***
+
+In isolation, there are significant interaction effects between kiwifruit extract treatment and the cooking method and cut. However, if we combine them in the same model, how many are still significant? We would like to learn more about what is leading to the significance.
+
+In this multi-factor scenario, the comparisons we are interested in depends on whether there is a significant interaction or not. If there is no significant interaction, the levels of first factor are compared independently to the levels of the second one. If there is a significant interaction, we would like to know if one factor has a strong effect of the other factor within some or all of its levels.
+
+The post hoc comparisons will allow us to indentify which combinations of the variables result in the the most difference for consumers.
+
+
+```{r, message=FALSE, warning=FALSE}
+car::Anova(ms, type = "II")
+```
+
+
+##3.1 Discuss the size of any significant differences. Are they meaningful differences?
+
+```{r}
+int31 = emmeans(ms, ~ cook + cut)
+
+emmip(int31, cook ~ cut) + theme_classic() + labs(col = "Cook")+ xlab("Type of cut")+ylab("Cook")+ggtitle("Emmip Plot for Cook and Cut of Meat")
+
+```
+
+```{r}
+int32 = emmeans(ms, ~ cook + d_aged)
+
+emmip(int32, cook ~ d_aged) + theme_classic() + labs(col = "Cook")+ xlab("Ageing period")+ylab("Cook")+ggtitle("Emmip Plot for Cook and Ageing period")
+
+```
+
+```{r}
+int33 = emmeans(ms, ~ cut + d_aged)
+
+emmip(int33, cut ~ d_aged) + theme_classic() + labs(col = "Cut of Meat")+ xlab("Ageing period")+ylab("Cut")+ggtitle("Emmip Plot for Ageing period and Cut of Meat")
+
+```
+
+
+We have observed in the interactions plots above that the pair with strong interaction effects is _cook and cut_; and the ones with no interaction effect are: _cut and ageing period_ and _cook and ageing period_.
+
+When it comes to the post hoc comparisons, we use _Scheffe's method_ to adjust the p-values becasuse we do not know what pairs we are interested in in the first place.
+
+The question, namely whether the consumers would be able to tell the differences between the meat samples, is more of a subjective one, which is really up to the consumers to give us their judgement. Let's set the bar to be 5 marks; in cases where the estimated mean difference of the tenderness scores is larger than 5, the difference is significant; if the difference is smaller than 5, then it is not significant. The significance of the differences is an indication of its meaningfulness and whether the consumers would be able to tell the difference between the meat samples.
+
+We will start with the ones with no interaction effect and explore the independent comparisons of the levels of the two factors.
+
+
+```{r, message=FALSE}
+# cut_emm = contrast(emmeans(ms, ~ cut), method = "pairwise", adjust = "scheffe")
+# trt_emm = contrast(emmeans(ms, ~ trial_notes), method = "pairwise", adjust = "scheffe")
+# dag_emm = contrast(emmeans(ms, ~ d_aged), method = "pairwise", adjust = "scheffe")
+# ck_emm = contrast(emmeans(ms, ~ cook), method = "pairwise", adjust = "scheffe")
+
+cut_emm = contrast(emmeans(ms, ~ cut), method = "pairwise", adjust = "scheffe")
+trt_emm = contrast(emmeans(ms, ~ trial_notes), method = "pairwise", adjust = "scheffe")
+dag_emm = contrast(emmeans(ms, ~ d_aged), method = "pairwise", adjust = "scheffe")
+ck_emm = contrast(emmeans(ms, ~ cook), method = "pairwise", adjust = "scheffe")
+```
+
+
+
+##3.2 Cut and Ageing Period
+
+
+```{r}
+ca_emm = update(cut_emm + dag_emm, adjust = "scheffe")
+ca_emm
+ca_emm %>% plot() + theme_classic() +geom_vline(xintercept = 0) + 
+  labs(x = "Estimated pairwise mean difference",
+       caption = "95% confidence intervals adjusted for\nmultiple testing using the Scheffe's method") +
+  ggtitle("Cut and Ageing period (No interaction)")
+```
+
+For _ageing period_, the difference between 10 days and 28 days has an adjusted p-value of about 0.08 which is not really significant. It is unlikely that the consumers would be able to tell the difference between the meat being aged for 10 days and the meat which is aged for 28 days.
+
+For _cut_, that is the muscle the sample is taken from, the difference between outside flat and striploin is highly significant. The size of the significant difference is quite large with the estimated pairwise mean difference being 16.73. As a result, the difference is quite meaningful and it is very likely that the consumers would be able to tell the difference between outer flat (OUT005) and striploin (STR045).
+
+
+
+##3.3 Cook and Cut
+
+
+```{r}
+emm1 = emmeans(ms, ~ trial_notes | cook + cut)
+contrast(emm1, method = "pairwise", adjust = "scheffe") %>% tidy() %>% filter(p.value <0.05)
+contrast(emm1, method = "pairwise", adjust = "scheffe") %>% plot() + theme_classic() +geom_vline(xintercept = 0) + 
+  labs(x = "Estimated pairwise mean difference",
+       caption = "95% confidence intervals adjusted for\nmultiple testing using the Scheffe's method") +
+  ggtitle("Cook and Cut (with interaction)")
+```
+
+For the _cook (cooking method) and cut (muscle)_ combination, all differences are significant which means that the effect of kiwifruit extract treatment is quite significant especially with the combination of _GRL and STR045_ being the most significant (about 12.94) and _RST-C10 and OUT005_ being the least signficant (about 6.87) in this instance. 
+
+Overall, the majority of these significant differences are quite large, such that the differences are meaningful. 
+
+We can conclude that the kiwifruit extract treatment has a significant effect on the meat and it is highly likely that the consumers would be able to tell the differences between the meat being treated with kiwifruit extract and meat which is untreated. 
+
+Here the most significant case is where the meat is striploin and is grilled. However, one could argue that there is not much of a disparity between the means of the tenderness scores in the case where the meat is outer flat, roasted, cold and is cut into 10 mm slices since the difference between the tenderness scores has merely scraped the 5-mark bar.
+
+
+##3.4 Cook and Ageing Period
+
+
+```{r}
+coo_emm = update(ck_emm + dag_emm, adjust = "scheffe")
+coo_emm
+coo_emm %>% plot() + theme_classic() +geom_vline(xintercept = 0) + 
+  labs(x = "Estimated pairwise mean difference",
+       caption = "95% confidence intervals adjusted for\nmultiple testing using the Scheffe's method") +
+  ggtitle("Cook and Ageing period (No interaction)")
+```
+
+
+For the _cook (cooking method) and d_aged (ageing period)_ combination, _RST-C10 and RST-C2_, _RST and RST-C2_ and _GRL and RST_C2_ are significant which means that the effect of kiwifruit extract treatment is quite significant especially with the combination of _GRL and 10_ being the most significant (about 18.48) and _RST-C10 and 28_ being the least signficant (about 7.63) in this instance. 
+
+For _ageing period_, the difference between 10 days and 28 days has an adjusted p-value of about 0.08 which is not really significant. It is unlikely that the consumers would be able to tell the difference between the meat being aged for 10 days and the meat which is aged for 28 days.
+
+For _cook_, that is the cooking method, some of the differences are highly significant, namely _RST-C10 and RST-C2_, _RST and RST-C2_ and _GRL and RST_C2_. The sizes of the significant differences are relatively large (compare to the 5-mark bar) with the estimated pairwise mean differences being 9.62, 5.52 and 5.40. As a result, the differences are somewhat meaningful and it is likely that the consumers would be able to tell the difference between the cooking methods.
+
+
+
+***
+# Conclusion
+***
+
+
+In conclusion, kiwifruit extract treatment has a significant effect on tenderness in red meat in conjunction with other factors (the muscle the sample is taken from, the ageing period and the cooking method). We have found that there are one combination of the factors which boost the effect of kiwifruit extract treatment on tenderness in red meat quite significantly that is when the meat is striploin and is grilled. Overall, consumers are highly likely to tell the difference between the meat samples. The cooking method alone is also a confounding factor for which the effect of kiwifruit extract is significant; same to the muscle. From this investigation, we can conclude that the kiwifruit extract treatment has an effect on certain combinations of factors (cooking method and muscle) and certain factors alone (muscle and cooking method individually), give you more tender meat, such that the consumers will be able to treat the meat accordingly to enhance their meat eating experience
+
+
+***
+# Reference
+***
+
+1. Influence Of Kiwifruit Extract Infusion on Consumer Sensory Outcomes Of Striploin (m. Longissimus Lumborum) and Outside Flat (m. Biceps Femoris) from Beef Carcasses Lees- Angela- Tarr- Garth- Polkinghorne- Rod- McGilchrist- Peter - https://www.mdpi.com/2304-8158/8/8/332/htm [Accessed 17 October 2019]
+
+
+2. Packages below
+
+```{r, message=FALSE, warning=FALSE}
+#Packages we used
+#library("ggplot2")
+#library("tidyverse")
+#library(readxl)
+#library(plyr)
+#library(ggpubr)
+#library(cowplot)
+#library(reshape)
+#library(ggfortify)
+#library(emmeans)
+#library(tidyverse)
+#library(dplyr)
+#library(tibble)
+#library(emmeans)
+#library(ggfortify)
+#library(knitr)
+#library(kableExtra)
+#library(car)
+#library(broom)
+```
+

@@ -1,0 +1,744 @@
+---
+title: "Project 3"
+author: "Matt Allan, ChenYue Wang, Hoang Minh Le"
+date: "28 May 2018"
+output: html_document
+---
+
+##Purpose: 
+###To gain an understanding of how students of The University of Sydney perform in first year units from the school of mathematics and statistics in order to find out ways students can be pushed to maximise their learning at university, without causing an excess possibility for unit failure. The Study will also look into whether there is already excess unit failure among students, and whether this should be of concern to the involved stakeholder.
+
+##Stakeholder: The University of Sydney 
+###This Study would be highly valuable to The University of Sydney. The data is necessary to have an understanding, not only of the student population within the mathematics/statistics department, but as a sample of the student population undertaking first year subjects across the University. The dataset also makes it possible to determine whether the majority students are completing the units satisfactorily, in order to decide whether restructuring is required to keep the University competitive without failing excess numbers of students.
+
+##Domain Knowledge: 
+###The University of Sydney is the oldest and most prestigious University in Australia, ranking, 4th in the world for Employability, and 50th overall (QS world university rankings, 2018). Many degrees in the modern world require some math, statistical, or programming units. Over the past 2 decades there has been a massive increase in students entering into Bachelor degrees (or higher) exponentiated by the influx of international students since 2005. However, data from the Department of Education and Training (2015, Completion Rates of Domestic Bachelor Students—A Cohort Analysis, 2005–13.) shows that more students are failing to finish their degrees over a 6 year period. With the current expenses for maths based units of study (USYD) at approximately $1150(domestic) and $5560(International) there is a considerable financial commitment for students to complete the degree. As much as tertiary education levels are important for a country’s ability to move forward in society. It is also important that students are finishing their degrees in order to stop our youth from gaining unnecessary debt from the education system (UA key findings, facts and figures, Cohort Analysis, 2005-2015).
+
+##Article 1: 
+###Journal: Higher education research facts and figures by Universities Australia (https://www.universitiesaustralia.edu.au/australias-universities/key-facts-and-data#.Ww4yCEiFPIW) 
+###This Journal was published by Universities Australia in 2015 from data taken by universities across Australia tracking the status of student’s progress within their tertiary education. Over periods of 4, 6, and 9 years they tracked completion, deferral, dropouts, and first year leavers across All Australian universities with reference to only domestic students. It is a publication which has widely been used as a guide for funding commitments by the Australian government as well as individual universities. 
+
+##Article 2:
+###Media article: 2015, ‘Who goes to university? The changing profile of our students’. Nick Parr associate professor in demography, Macquarie University.  (https://theconversation.com/who-goes-to- university-the-changing-profile-of-our-students-40373) 
+
+###The Media article ‘Who goes to university? The changing profile of our students’ written by associate professor of demography, Macquarie University, looks into factors for growth, Domestic vs international, as well as Gender imbalance, indigenous representation and other factors in order to represent the university students of Australia at the time. With data sourced from the Department of Education and Training it recognises that the student numbers have grown incredibly high with input from both domestic and international students, and to keep up with the current trends, universities should be expanding for further growth of the domestic student enrolments, in order to increase the percentage of young adults (18-25 years) with bachelor degrees from 33% (2015 data) to 40% by 2025(trend data from the NSW tertiary education plan 2010)
+
+##Article 3: 
+###Media Article: 2010, NSW Tertiary education plan, NSW government. (https://education.nsw.gov.au/about-us/strategies-and- reports/media/documents/NSWterteduplan.pdf)  
+   
+###The tertiary education plan by the NSW Government created the Tertiary Education plan in order to increase tertiary education numbers in young adults, develop a Highly skilled workforce through domestic training facilitate research and development within NSW, as well as supporting regional development of education systems. This was considered by many as a sign of recognition for the need to facilitate growth within the tertiary education of NSW. The plan takes into account past facts and figures taken by the Department of Education and Training and looks towards 10 and 15 year trends that the Education system should be seeing. These trends speculate that Australia will see 45% of all 24 – 34 year olds with bachelor degree education levels or higher. 
+
+
+```{r, echo = F}
+
+data = read.csv("Student_data_advanced.csv")
+
+data$Age <- factor(data$Age, levels = c("18 and under", "19-21", "22-25", "Over 25"))
+data$Unit.of.Study.Level <- factor(data$Unit.of.Study.Level, levels = c("Mainstream", "Fundamental", "Advanced"))
+
+data$Unit.of.Study.Grade <- factor(data$Unit.of.Study.Grade, levels = c("FA", "PS", "CR", "DI", "HD"))
+```
+
+```{r, echo = T, include= TRUE}
+
+#As  you can see the classification of all variable is qualitative (except the Student ID and Year).
+
+
+str(data)
+
+#Summary of the table:
+
+summary(data)
+```
+
+##Research Question 1: Do students in advanced courses get better marks than those in mainstream or fundamental courses?
+
+```{r, echo = F}
+advanced_1213 <- data[data$Unit.of.Study.Level == "Advanced" & data$Year == "2012" | data$Year == "2013" & data$Unit.of.Study.Level == "Advanced",]
+
+advanced_1415 <- data[data$Unit.of.Study.Level == "Advanced" & data$Year == "2014" | data$Unit.of.Study.Level == "Advanced" & data$Year == "2015",]
+
+advanced_1617 <- data[data$Unit.of.Study.Level == "Advanced" & data$Year == "2016" | data$Unit.of.Study.Level == "Advanced" & data$Year == "2017",]
+
+mainstream_1213 <- data[data$Unit.of.Study.Level == "Mainstream" | data$Year == "2012" | data$Unit.of.Study.Level == "Mainstream" & data$Year == "2013",]
+
+mainstream_1415 <- data[data$Unit.of.Study.Level == "Mainstream" | data$Year == "2014" | data$Unit.of.Study.Level == "Mainstream" & data$Year == "2015",]
+
+mainstream_1617 <- data[data$Unit.of.Study.Level == "Mainstream" |data$Year == "2016" | data$Unit.of.Study.Level == "Mainstream" & data$Year == "2017",]
+
+fundamental_1213 <- data[data$Unit.of.Study.Level == "Fundamental" | data$Year == "2012" | data$Unit.of.Study.Level == "Fundamental" & data$Year == "2013",]
+
+fundamental_1415 <- data[data$Unit.of.Study.Level == "Fundamental" | data$Year == "2014" | data$Unit.of.Study.Level == "Fundamental" & data$Year == "2015",]
+
+fundamental_1617 <- data[data$Unit.of.Study.Level == "Fundamental" | data$Year == "2016" | data$Unit.of.Study.Level == "Fundamental" & data$Year == "2017",]
+```
+
+
+###Grades Distribution of Advanced Studies
+```{r, echo = F}
+library(ggplot2)
+
+`Domestic/Intl 2012 - 2013` = advanced_1213$Domestic.Intl
+`Domestic/Intl 2014 - 2015` = advanced_1415$Domestic.Intl
+`Domestic/Intl 2016 - 2017` = advanced_1617$Domestic.Intl
+
+a1 = ggplot(advanced_1213, aes(x = advanced_1213$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2012 - 2013")
+a1 + geom_bar(aes(fill = `Domestic/Intl 2012 - 2013`)) + ylab("Number of People") + xlab("Grades")
+
+a2 = ggplot(advanced_1415, aes(x = advanced_1415$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2014 - 2015")
+a2 + geom_bar(aes(fill = `Domestic/Intl 2014 - 2015`)) + ylab("Number of People") + xlab("Grades")
+
+a3 = ggplot(advanced_1617, aes(x = advanced_1617$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2016 - 2017")
+a3 + geom_bar(aes(fill = `Domestic/Intl 2016 - 2017`)) + ylab("Number of People") + xlab("Grades")
+
+```
+
+### Frequency and relative frequency of grades in 2012-2013:
+```{r, echo= F}
+library(MASS)
+
+table(advanced_1213$Unit.of.Study.Grade)
+table(advanced_1213$Unit.of.Study.Grade)/nrow(advanced_1213)
+```
+### Frequency and relative frequency of grades in 2014-2015:
+
+```{r, echo= F}
+library(MASS)
+table(advanced_1415$Unit.of.Study.Grade)
+table(advanced_1415$Unit.of.Study.Grade)/nrow(advanced_1415)
+```
+### Frequency and relative frequency of grades in 2016-2017:
+
+```{r, echo= F}
+library(MASS)
+table(advanced_1617$Unit.of.Study.Grade)
+table(advanced_1617$Unit.of.Study.Grade)/nrow(advanced_1617)
+```
+
+###Numerical Summaries for Advanced Studies:
+
+```{r, echo = F}
+library(MASS)
+
+adv = cbind(table(advanced_1213$Unit.of.Study.Grade))
+
+adv2 = cbind(table(advanced_1415$Unit.of.Study.Grade))
+
+adv3 = cbind(table(advanced_1617$Unit.of.Study.Grade))
+
+all = sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617))
+
+ fa_12 = sum(advanced_1213$Unit.of.Study.Grade == "FA") / NROW(advanced_1213$Unit.of.Study.Grade) * 100
+
+ps_12 = sum(advanced_1213$Unit.of.Study.Grade == "PS") / NROW(advanced_1213$Unit.of.Study.Grade) * 100
+
+cr_12 = sum(advanced_1213$Unit.of.Study.Grade == "CR") / NROW(advanced_1213$Unit.of.Study.Grade) * 100
+
+di_12 = sum(advanced_1213$Unit.of.Study.Grade == "DI") / NROW(advanced_1213$Unit.of.Study.Grade) * 100
+
+hd_12 = sum(advanced_1213$Unit.of.Study.Grade == "HD") / NROW(advanced_1213$Unit.of.Study.Grade) * 100
+
+
+fa_14 = sum(advanced_1415$Unit.of.Study.Grade == "FA") / NROW(advanced_1415$Unit.of.Study.Grade) * 100
+
+ps_14 = sum(advanced_1415$Unit.of.Study.Grade == "PS") / NROW(advanced_1415$Unit.of.Study.Grade) * 100
+
+cr_14 = sum(advanced_1415$Unit.of.Study.Grade == "CR") / NROW(advanced_1415$Unit.of.Study.Grade) * 100
+
+di_14 = sum(advanced_1415$Unit.of.Study.Grade == "DI") / NROW(advanced_1415$Unit.of.Study.Grade) * 100
+
+hd_14 = sum(advanced_1415$Unit.of.Study.Grade == "HD") / NROW(advanced_1415$Unit.of.Study.Grade) * 100
+
+
+fa_16 = sum(advanced_1617$Unit.of.Study.Grade == "FA") / NROW(advanced_1617$Unit.of.Study.Grade) * 100
+
+ps_16 = sum(advanced_1617$Unit.of.Study.Grade == "PS") / NROW(advanced_1617$Unit.of.Study.Grade) * 100
+
+cr_16 = sum(advanced_1617$Unit.of.Study.Grade == "CR") / NROW(advanced_1617$Unit.of.Study.Grade) * 100
+
+di_16 = sum(advanced_1617$Unit.of.Study.Grade == "DI") / NROW(advanced_1617$Unit.of.Study.Grade) * 100
+
+hd_16 = sum(advanced_1617$Unit.of.Study.Grade == "HD") / NROW(advanced_1617$Unit.of.Study.Grade) * 100
+
+fa = (sum(advanced_1213$Unit.of.Study.Grade == "FA") + sum(advanced_1415$Unit.of.Study.Grade == "FA") + sum(advanced_1617$Unit.of.Study.Grade == "FA")) / (sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617))) * 100
+
+ps = (sum(advanced_1213$Unit.of.Study.Grade == "PS") + sum(advanced_1415$Unit.of.Study.Grade == "PS") + sum(advanced_1617$Unit.of.Study.Grade == "PS")) / (sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617))) * 100
+
+cr = (sum(advanced_1213$Unit.of.Study.Grade == "CR") + sum(advanced_1415$Unit.of.Study.Grade == "CR") + sum(advanced_1617$Unit.of.Study.Grade == "CR")) / (sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617))) * 100
+
+di = (sum(advanced_1213$Unit.of.Study.Grade == "DI") + sum(advanced_1415$Unit.of.Study.Grade == "DI") + sum(advanced_1617$Unit.of.Study.Grade == "DI")) / sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617)) * 100
+
+hd = (sum(advanced_1213$Unit.of.Study.Grade == "HD") + sum(advanced_1415$Unit.of.Study.Grade == "HD") + sum(advanced_1617$Unit.of.Study.Grade == "HD")) /(sum(nrow(advanced_1213) + nrow(advanced_1415) + nrow(advanced_1617))) * 100
+```
+
+|                  | 2012-2013 | 2014-2015 | 2016-2017 | All  |
+|-----------------:|:---------:|:---------:|:---------:|:----:|
+|Number of students| 1730      | 1657      | 1877      | 5264 |
+|FA                | 92        | 79        | 102       | 273  |
+|FA %              | 5.32      | 4.77      | 5.43      | 5.19 |
+|PS                | 211       | 262       | 272       | 745  |
+|PS %              | 12.20     | 15.81     | 14.49     | 14.15|
+|CR                | 574       | 393       | 434       | 1401 |
+|CR %              | 33.18     | 23.72     | 23.12     | 26.61|
+|DI                | 513       | 527       | 667       | 1707 |
+|DI %              | 29.65     | 31.80     | 35.54     | 32.43|
+|HD                | 340       | 396       | 402       | 1138 |
+|HD %              | 19.65     | 23.90     | 21.42     | 21.61|
+
+
+```{r, echo= F}
+
+adv_int <- data[data$Domestic.Intl == "I" & data$Unit.of.Study.Level == "Advanced",]
+
+fa = sum(adv_int$Unit.of.Study.Grade =="FA")
+ps = sum(adv_int$Unit.of.Study.Grade =="PS")
+cr = sum(adv_int$Unit.of.Study.Grade =="CR")
+di = sum(adv_int$Unit.of.Study.Grade =="DI")
+hd = sum(adv_int$Unit.of.Study.Grade =="HD")
+all = nrow(adv_int)
+
+fa_1 = fa/all * 100
+ps_1 = ps/all*100
+cr_1 = cr/all*100
+di_1 = di/all*100
+hd_1 = hd/all*100
+
+
+adv_dom <- data[data$Domestic.Intl == "D" & data$Unit.of.Study.Level == "Advanced",]
+all_dom = nrow(adv_dom)
+
+fa2 = sum(adv_dom$Unit.of.Study.Grade == "FA")
+ps2 = sum(adv_dom$Unit.of.Study.Grade == "PS")
+cr2 = sum(adv_dom$Unit.of.Study.Grade == "CR")
+di2 = sum(adv_dom$Unit.of.Study.Grade == "DI")
+hd2 = sum(adv_dom$Unit.of.Study.Grade == "HD")
+
+
+fa_2 = fa2/all_dom*100
+ps_2 = ps2/all_dom*100
+cr_2 = cr2/all_dom*100
+di_2 = di2/all_dom*100
+hd_2 = hd2/all_dom*100 
+```
+
+|                  | International | Domestic  | 
+|-----------------:|:-------------:|:---------:|
+|Number of students| 650           | 4614      |
+|FA                | 46            | 227       |
+|FA %              | 7.08          | 4.92      |
+|PS                | 128           | 617       |
+|PS %              | 19.69         | 13.37     |
+|CR                | 147           | 1254      |
+|CR %              | 22.62         | 27.18     |
+|DI                | 203           | 1504      |
+|DI %              | 31.23         | 32.60     |
+|HD                | 126           | 1012      |
+|HD %              | 19.38         | 21.93     |
+
+
+###Grades Distribution of Mainstream Studies
+```{r, echo = F}
+library(ggplot2)
+`Domestic/Intl 2012 - 2013` = mainstream_1213$Domestic.Intl
+`Domestic/Intl 2014 - 2015` = mainstream_1415$Domestic.Intl
+`Domestic/Intl 2016 - 2017` = mainstream_1617$Domestic.Intl
+
+m1 = ggplot(mainstream_1213, aes(x = mainstream_1213$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2012 - 2013")
+m1 + geom_bar(aes(fill = `Domestic/Intl 2012 - 2013`)) + ylab("Number of People") + xlab("Grades")
+
+m2 = ggplot(mainstream_1415, aes(x = mainstream_1415$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2014 - 2015")
+m2 + geom_bar(aes(fill = `Domestic/Intl 2014 - 2015`)) + ylab("Number of People") + xlab("Grades")
+m3 = ggplot(mainstream_1617, aes(x = mainstream_1617$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2016 - 2017")
+m3 + geom_bar(aes(fill = `Domestic/Intl 2016 - 2017`)) + ylab("Number of People") + xlab("Grades")
+```
+
+### Frequency and relative frequency of grades in 2012-2013:
+```{r, echo= F}
+library(MASS)
+
+table(mainstream_1213$Unit.of.Study.Grade)
+table(mainstream_1213$Unit.of.Study.Grade)/nrow(mainstream_1213)
+```
+### Frequency and relative frequency of grades in 2014-2015:
+
+```{r, echo= F}
+library(MASS)
+table(mainstream_1415$Unit.of.Study.Grade)
+table(mainstream_1415$Unit.of.Study.Grade)/nrow(mainstream_1415)
+```
+### Frequency and relative frequency of grades in 2016-2017:
+
+```{r, echo= F}
+library(MASS)
+table(mainstream_1617$Unit.of.Study.Grade)
+table(mainstream_1617$Unit.of.Study.Grade)/nrow(mainstream_1617)
+```
+
+
+###Numerical Summaries for Mainstream Studies:
+
+```{r, echo = F}
+
+main = cbind(table(mainstream_1213$Unit.of.Study.Grade))
+
+main2 = cbind(table(mainstream_1415$Unit.of.Study.Grade))
+
+main3 = cbind(table(mainstream_1617$Unit.of.Study.Grade))
+
+all = sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617))
+
+ fa_12 = sum(mainstream_1213$Unit.of.Study.Grade == "FA") / NROW(mainstream_1213$Unit.of.Study.Grade) * 100
+
+ps_12 = sum(mainstream_1213$Unit.of.Study.Grade == "PS") / NROW(mainstream_1213$Unit.of.Study.Grade) * 100
+
+cr_12 = sum(mainstream_1213$Unit.of.Study.Grade == "CR") / NROW(mainstream_1213$Unit.of.Study.Grade) * 100
+
+di_12 = sum(mainstream_1213$Unit.of.Study.Grade == "DI") / NROW(mainstream_1213$Unit.of.Study.Grade) * 100
+
+hd_12 = sum(mainstream_1213$Unit.of.Study.Grade == "HD") / NROW(mainstream_1213$Unit.of.Study.Grade) * 100
+
+
+fa_14 = sum(mainstream_1415$Unit.of.Study.Grade == "FA") / NROW(mainstream_1415$Unit.of.Study.Grade) * 100
+
+ps_14 = sum(mainstream_1415$Unit.of.Study.Grade == "PS") / NROW(mainstream_1415$Unit.of.Study.Grade) * 100
+
+cr_14 = sum(mainstream_1415$Unit.of.Study.Grade == "CR") / NROW(mainstream_1415$Unit.of.Study.Grade) * 100
+
+di_14 = sum(mainstream_1415$Unit.of.Study.Grade == "DI") / NROW(mainstream_1415$Unit.of.Study.Grade) * 100
+
+hd_14 = sum(mainstream_1415$Unit.of.Study.Grade == "HD") / NROW(mainstream_1415$Unit.of.Study.Grade) * 100
+
+
+fa_16 = sum(mainstream_1617$Unit.of.Study.Grade == "FA") / NROW(mainstream_1617$Unit.of.Study.Grade) * 100
+
+ps_16 = sum(mainstream_1617$Unit.of.Study.Grade == "PS") / NROW(mainstream_1617$Unit.of.Study.Grade) * 100
+
+cr_16 = sum(mainstream_1617$Unit.of.Study.Grade == "CR") / NROW(mainstream_1617$Unit.of.Study.Grade) * 100
+
+di_16 = sum(mainstream_1617$Unit.of.Study.Grade == "DI") / NROW(mainstream_1617$Unit.of.Study.Grade) * 100
+
+hd_16 = sum(mainstream_1617$Unit.of.Study.Grade == "HD") / NROW(mainstream_1617$Unit.of.Study.Grade) * 100
+
+fa = (sum(mainstream_1213$Unit.of.Study.Grade == "FA") + sum(mainstream_1415$Unit.of.Study.Grade == "FA") + sum(mainstream_1617$Unit.of.Study.Grade == "FA")) / (sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617))) * 100
+
+ps = (sum(mainstream_1213$Unit.of.Study.Grade == "PS") + sum(mainstream_1415$Unit.of.Study.Grade == "PS") + sum(mainstream_1617$Unit.of.Study.Grade == "PS")) / (sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617))) * 100
+
+cr = (sum(mainstream_1213$Unit.of.Study.Grade == "CR") + sum(mainstream_1415$Unit.of.Study.Grade == "CR") + sum(mainstream_1617$Unit.of.Study.Grade == "CR")) / (sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617))) * 100
+
+di = (sum(mainstream_1213$Unit.of.Study.Grade == "DI") + sum(mainstream_1415$Unit.of.Study.Grade == "DI") + sum(mainstream_1617$Unit.of.Study.Grade == "DI")) / sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617)) * 100
+
+hd = (sum(mainstream_1213$Unit.of.Study.Grade == "HD") + sum(mainstream_1415$Unit.of.Study.Grade == "HD") + sum(mainstream_1617$Unit.of.Study.Grade == "HD")) /(sum(nrow(mainstream_1213) + nrow(mainstream_1415) + nrow(mainstream_1617))) * 100
+
+```
+
+|                  | 2012-2013 | 2014-2015 | 2016-2017 | All   |
+|-----------------:|:---------:|:---------:|:---------:|:-----:|
+|Number of students| 45440     | 45626     | 45071     | 136137|
+|FA                | 6351      | 6227      | 6219      | 18797 |
+|FA %              | 13.98     | 13.65     | 13.80     | 13.81 |
+|PS                | 16684     | 16279     | 16148     | 49111 |
+|PS %              | 36.72     | 35.68     | 135.83    | 36.07 |
+|CR                | 12168     | 12355     | 12162     | 36685 |
+|CR %              | 26.78     | 27.08     | 26.98     | 26.95 |
+|DI                | 7763      | 8083      | 7958      | 23804 |
+|DI %              | 17.08     | 17.72     | 17.66     | 17.49 |
+|HD                | 2474      | 2682      | 2584      | 7740  |
+|HD %              | 5.44      | 5.88      | 5.73      | 5.69  |
+
+```{r, echo= F}
+
+main_int <- data[data$Domestic.Intl == "I" & data$Unit.of.Study.Level == "Mainstream",]
+
+fa = sum(main_int$Unit.of.Study.Grade =="FA")
+ps = sum(main_int$Unit.of.Study.Grade =="PS")
+cr = sum(main_int$Unit.of.Study.Grade =="CR")
+di = sum(main_int$Unit.of.Study.Grade =="DI")
+hd = sum(main_int$Unit.of.Study.Grade =="HD")
+all = nrow(main_int)
+
+fa_1 = fa/all * 100
+ps_1 = ps/all*100
+cr_1 = cr/all*100
+di_1 = di/all*100
+hd_1 = hd/all*100
+
+
+main_dom <- data[data$Domestic.Intl == "D" & data$Unit.of.Study.Level == "Mainstream",]
+all_dom = nrow(main_dom)
+
+fa2 = sum(main_dom$Unit.of.Study.Grade == "FA")
+ps2 = sum(main_dom$Unit.of.Study.Grade == "PS")
+cr2 = sum(main_dom$Unit.of.Study.Grade == "CR")
+di2 = sum(main_dom$Unit.of.Study.Grade == "DI")
+hd2 = sum(main_dom$Unit.of.Study.Grade == "HD")
+
+
+fa_2 = fa2/all_dom * 100
+ps_2 = ps2/all_dom*100
+cr_2 = cr2/all_dom*100
+di_2 = di2/all_dom*100
+hd_2 = hd2/all_dom*100 
+```
+
+|                  | International | Domestic  | 
+|-----------------:|:-------------:|:---------:|
+|Number of students| 12215         | 29336     |
+|FA                | 1479          | 4297      |
+|FA %              | 12.11         | 14.65     |
+|PS                | 14053         | 11101     |
+|PS %              | 33.18         | 37.84     |
+|CR                | 3233          | 8005      |
+|CR %              | 26.47         | 27.29     |
+|DI                | 2523          | 4638      |
+|DI %              | 20.65         | 15.81     |
+|HD                | 927           | 1295      |
+|HD %              | 7.59          | 4.41      |
+
+
+
+
+###Grades Distribution of Fundamental Studies
+
+```{r, echo = F}
+library(ggplot2)
+
+`Domestic/Intl 2012 - 2013` = fundamental_1213$Domestic.Intl
+`Domestic/Intl 2014 - 2015` = fundamental_1415$Domestic.Intl
+`Domestic/Intl 2016 - 2017` = fundamental_1617$Domestic.Intl
+
+f1 = ggplot(fundamental_1213, aes(fundamental_1213$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2012 - 2013")
+f1 + geom_bar(aes(fill = `Domestic/Intl 2012 - 2013`)) + ylab("Number of People") + xlab("Grades")
+
+f2 = ggplot(fundamental_1415, aes(fundamental_1415$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2014 - 2015")
+f2 + geom_bar(aes(fill = `Domestic/Intl 2014 - 2015`)) + ylab("Number of People") + xlab("Grades")
+
+f3 = ggplot(fundamental_1617, aes(fundamental_1617$Unit.of.Study.Grade)) + ggtitle("Grades Distribution in 2016 - 2017")
+f3 + geom_bar(aes(fill = `Domestic/Intl 2016 - 2017`)) + ylab("Number of People") + xlab("Grades")
+
+
+```
+
+### Frequency and relative frequency of grades in 2012-2013:
+```{r, echo= F}
+library(MASS)
+
+table(fundamental_1213$Unit.of.Study.Grade)
+table(fundamental_1213$Unit.of.Study.Grade)/nrow(fundamental_1213)
+```
+### Frequency and relative frequency of grades in 2014-2015:
+
+```{r, echo= F}
+library(MASS)
+table(fundamental_1415$Unit.of.Study.Grade)
+table(fundamental_1415$Unit.of.Study.Grade)/nrow(fundamental_1415)
+```
+### Frequency and relative frequency of grades in 2016-2017:
+
+```{r, echo= F}
+library(MASS)
+table(fundamental_1617$Unit.of.Study.Grade)
+table(fundamental_1617$Unit.of.Study.Grade)/nrow(fundamental_1617)
+```
+
+###Numerical Summaries for Fundamental Studies:
+
+```{r, echo = F}
+
+main = cbind(table(fundamental_1213$Unit.of.Study.Grade))
+
+main2 = cbind(table(fundamental_1415$Unit.of.Study.Grade))
+
+main3 = cbind(table(fundamental_1617$Unit.of.Study.Grade))
+
+all = sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617))
+
+ fa_12 = sum(fundamental_1213$Unit.of.Study.Grade == "FA") / NROW(fundamental_1213$Unit.of.Study.Grade) * 100
+
+ps_12 = sum(fundamental_1213$Unit.of.Study.Grade == "PS") / NROW(fundamental_1213$Unit.of.Study.Grade) * 100
+
+cr_12 = sum(fundamental_1213$Unit.of.Study.Grade == "CR") / NROW(fundamental_1213$Unit.of.Study.Grade) * 100
+
+di_12 = sum(fundamental_1213$Unit.of.Study.Grade == "DI") / NROW(fundamental_1213$Unit.of.Study.Grade) * 100
+
+hd_12 = sum(fundamental_1213$Unit.of.Study.Grade == "HD") / NROW(fundamental_1213$Unit.of.Study.Grade) * 100
+
+
+fa_14 = sum(fundamental_1415$Unit.of.Study.Grade == "FA") / NROW(fundamental_1415$Unit.of.Study.Grade) * 100
+
+ps_14 = sum(fundamental_1415$Unit.of.Study.Grade == "PS") / NROW(fundamental_1415$Unit.of.Study.Grade) * 100
+
+cr_14 = sum(fundamental_1415$Unit.of.Study.Grade == "CR") / NROW(fundamental_1415$Unit.of.Study.Grade) * 100
+
+di_14 = sum(fundamental_1415$Unit.of.Study.Grade == "DI") / NROW(fundamental_1415$Unit.of.Study.Grade) * 100
+
+hd_14 = sum(fundamental_1415$Unit.of.Study.Grade == "HD") / NROW(fundamental_1415$Unit.of.Study.Grade) * 100
+
+
+fa_16 = sum(fundamental_1617$Unit.of.Study.Grade == "FA") / NROW(fundamental_1617$Unit.of.Study.Grade) * 100
+
+ps_16 = sum(fundamental_1617$Unit.of.Study.Grade == "PS") / NROW(fundamental_1617$Unit.of.Study.Grade) * 100
+
+cr_16 = sum(fundamental_1617$Unit.of.Study.Grade == "CR") / NROW(fundamental_1617$Unit.of.Study.Grade) * 100
+
+di_16 = sum(fundamental_1617$Unit.of.Study.Grade == "DI") / NROW(fundamental_1617$Unit.of.Study.Grade) * 100
+
+hd_16 = sum(fundamental_1617$Unit.of.Study.Grade == "HD") / NROW(fundamental_1617$Unit.of.Study.Grade) * 100
+
+fa = (sum(fundamental_1213$Unit.of.Study.Grade == "FA") + sum(fundamental_1415$Unit.of.Study.Grade == "FA") + sum(fundamental_1617$Unit.of.Study.Grade == "FA")) / (sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617))) * 100
+
+ps = (sum(fundamental_1213$Unit.of.Study.Grade == "PS") + sum(fundamental_1415$Unit.of.Study.Grade == "PS") + sum(fundamental_1617$Unit.of.Study.Grade == "PS")) / (sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617))) * 100
+
+cr = (sum(fundamental_1213$Unit.of.Study.Grade == "CR") + sum(fundamental_1415$Unit.of.Study.Grade == "CR") + sum(fundamental_1617$Unit.of.Study.Grade == "CR")) / (sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617))) * 100
+
+di = (sum(fundamental_1213$Unit.of.Study.Grade == "DI") + sum(fundamental_1415$Unit.of.Study.Grade == "DI") + sum(fundamental_1617$Unit.of.Study.Grade == "DI")) / sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617)) * 100
+
+hd = (sum(fundamental_1213$Unit.of.Study.Grade == "HD") + sum(fundamental_1415$Unit.of.Study.Grade == "HD") + sum(fundamental_1617$Unit.of.Study.Grade == "HD")) /(sum(nrow(fundamental_1213) + nrow(fundamental_1415) + nrow(fundamental_1617))) * 100
+
+```
+
+|                  | 2012-2013 | 2014-2015 | 2016-2017 | All  |
+|-----------------:|:---------:|:---------:|:---------:|:----:|
+|Number of students| 24419     | 25234     | 25890     | 75543|
+|FA                | 3687      | 3695      | 3669      | 11051|
+|FA %              | 15.10     | 14.64     | 14.17     | 14.63|
+|PS                | 9310      | 8945      | 8878      | 27133|
+|PS %              | 38.13     | 35.45     | 34.29     | 35.92|
+|CR                | 6380      | 6594      | 6902      | 19876|
+|CR %              | 26.13     | 26.13     | 26.66     | 26.31|
+|DI                | 3765      | 4442      | 4775      | 12982|
+|DI %              | 15.42     | 17.60     | 18.44     | 17.18|
+|HD                | 1277      | 1558      | 1666      | 4501 |
+|HD %              | 5.23      | 6.17      | 6.43      | 5.96 |
+
+```{r, echo= F}
+
+fund_int <- data[data$Domestic.Intl == "I" & data$Unit.of.Study.Level == "Fundamental",]
+
+fa = sum(fund_int$Unit.of.Study.Grade =="FA")
+ps = sum(fund_int$Unit.of.Study.Grade =="PS")
+cr = sum(fund_int$Unit.of.Study.Grade =="CR")
+di = sum(fund_int$Unit.of.Study.Grade =="DI")
+hd = sum(fund_int$Unit.of.Study.Grade =="HD")
+all = nrow(fund_int)
+
+fa_1 = fa/all * 100
+ps_1 = ps/all*100
+cr_1 = cr/all*100
+di_1 = di/all*100
+hd_1 = hd/all*100
+
+
+fund_dom <- data[data$Domestic.Intl == "D" & data$Unit.of.Study.Level == "Fundamental",]
+all_dom = nrow(fund_dom)
+
+fa2 = sum(fund_dom$Unit.of.Study.Grade == "FA")
+ps2 = sum(fund_dom$Unit.of.Study.Grade == "PS")
+cr2 = sum(fund_dom$Unit.of.Study.Grade == "CR")
+di2 = sum(fund_dom$Unit.of.Study.Grade == "DI")
+hd2 = sum(fund_dom$Unit.of.Study.Grade == "HD")
+
+
+fa_2 = fa2/all_dom*100
+ps_2 = ps2/all_dom*100
+cr_2 = cr2/all_dom*100
+di_2 = di2/all_dom*100
+hd_2 = hd2/all_dom*100 
+```
+
+|                  | International | Domestic  | 
+|-----------------:|:-------------:|:---------:|
+|Number of students| 1864          | 15807     |
+|FA                | 234           | 2531      |
+|FA %              | 12.55         | 16.01     |
+|PS                | 494           | 5889      |
+|PS %              | 26.50         | 37.25     |
+|CR                | 431           | 8005      |
+|CR %              | 23.12         | 26.50     |
+|DI                | 468           | 2489      |
+|DI %              | 25.11         | 15.75     |
+|HD                | 237           | 709       |
+|HD %              | 12.71         | 4.49      |
+
+
+###Conclusion: Even though, it seems like more students received distinction marks in both fundamental and mainstream units than in advanced unit, the ratios tell us the exact opossite. Based on percentages those who study advanced units, tend to achieve better results collectively than the other two groups of students. The reason we can claim this is because the fundamental and mainstream units have lower percentage ratios compared to the higher mark ratios in the advanced units.
+###Also, it is possible to assume that being an international student may not influence the students’ grades. The distribution of grades amongst international students is similar to domestic students. The cause of ratio difference can be the number of international students in our dataset.
+
+
+##Research Question 2: What was the relationship between age and their grade?
+
+```{r setup, include=FALSE}
+
+library(ggplot2)
+table = read.csv('Student_data_advanced.csv')
+splitted <- split(table,table$'Age', drop = FALSE)
+new_18_under = splitted[['18 and under']]
+new_19_21 = splitted[["19-21"]]
+new_22_25 = splitted[['22-25']]
+new_Over_25 = splitted[['Over 25']]
+
+
+total_18_under = dim(new_18_under)[1]
+total_19_21 = dim(new_19_21)[1]
+total_22_25 = dim(new_22_25)[1]
+total_25_over = dim(new_Over_25)[1]
+
+
+
+split_18_under <- split(new_18_under,new_18_under$Unit.of.Study.Grade,drop = FALSE)
+s_18_CR = dim(split_18_under[['CR']])[1]
+s_18_DI = dim(split_18_under[['DI']])[1]
+s_18_FA = dim(split_18_under[['FA']])[1]
+s_18_HD = dim(split_18_under[['HD']])[1]
+s_18_PS = dim(split_18_under[['PS']])[1]
+
+
+split_19_21 <- split(new_19_21,new_19_21$Unit.of.Study.Grade,drop = FALSE)
+s_19_21_CR = dim(split_19_21[['CR']])[1]
+s_19_21_DI = dim(split_19_21[['DI']])[1]
+s_19_21_FA = dim(split_19_21[['FA']])[1]
+s_19_21_HD = dim(split_19_21[['HD']])[1]
+s_19_21_PS = dim(split_19_21[['PS']])[1]
+
+
+split_22_25 <- split(new_22_25,new_22_25$Unit.of.Study.Grade,drop = FALSE)
+s_22_25_CR = dim(split_22_25[['CR']])[1]
+s_22_25_DI = dim(split_22_25[['DI']])[1]
+s_22_25_FA = dim(split_22_25[['FA']])[1]
+s_22_25_HD = dim(split_22_25[['HD']])[1]
+s_22_25_PS = dim(split_22_25[['PS']])[1]
+
+split_25_over <- split(new_Over_25,new_Over_25$Unit.of.Study.Grade,drop = FALSE)
+s_25_over_CR = dim(split_25_over[['CR']])[1]
+s_25_over_DI = dim(split_25_over[['DI']])[1]
+s_25_over_FA = dim(split_25_over[['FA']])[1]
+s_25_over_HD = dim(split_25_over[['HD']])[1]
+s_25_over_PS = dim(split_25_over[['PS']])[1]
+
+final <- matrix(c(s_18_FA/total_18_under*100,s_18_PS/total_18_under*100,s_18_CR/total_18_under*100,s_18_DI/total_18_under*100,s_18_HD/total_18_under*100,s_19_21_FA/total_19_21*100,s_19_21_PS/total_19_21*100,s_19_21_CR/total_19_21*100,s_19_21_DI/total_19_21*100,s_19_21_HD/total_19_21*100,s_22_25_FA/total_22_25*100,s_22_25_PS/total_22_25*100,s_22_25_CR/total_22_25*100,s_22_25_DI/total_22_25*100,s_22_25_HD/total_22_25*100,s_25_over_FA/total_25_over*100,s_25_over_PS/total_25_over*100,s_25_over_CR/total_25_over*100,s_25_over_DI/total_25_over*100,s_25_over_HD/total_25_over*100),ncol=5,byrow = TRUE)
+final <- round(final,2)
+colnames(final) <- c("FA%","PS%","CR%","DI%","HD%")
+rownames(final) <- c("18 and under","19-21","22-25","25 and over")
+
+splitted_2 <- split(table,table$'Domestic.Intl', drop=FALSE)
+new_domestic = splitted_2[['D']]
+new_international = splitted_2[['I']]
+```
+
+```{r pressure, echo=FALSE}
+
+
+
+sentence <- 'Population rate in certain range of age group'
+sentence
+final
+```
+
+###Conclusion: As we can see from the table older students are approximately half as likely to achieve a distinction or high distinction compared to younger students. It is also twice as likely for a student aged 25+ to fail a unit than a student aged  under 18 or 18 - 21. This may be because of other stressors or for the fact that older students are more focused on the outer world than university.
+
+##Research Question 3: What is the difference between the number of domestic and international students from 2012 to 2017, and what might affect this happen?
+
+```{r, echo=FALSE}
+
+barplot(table(new_domestic$Year), main = 'The Number of Domestic stuents by year',names.arg = c("2012","2013","2014","2015","2016","2017"), col = "black",xlab = 'Years',ylab = 'Numbers Of People')
+
+barplot(table(new_international$Year), main = 'The Number of International stuents by year',names.arg = c("2012","2013","2014","2015","2016","2017"), col = "black",xlab = 'Years',ylab = 'Numbers Of People')
+
+```
+
+###Conclusion: From the graph it can be seen that domestic students remain within a certain range each year. However, the number of international students has been increasing each year. This may be due to Sydney University’s increasing global influence.
+
+##Research Question 4: How many units did the average student study over the data collection period? Were there students who had to repeat units multiple times?
+
+```{r, echo= F}
+
+Data = read.csv("Student_data_advanced.csv")
+library("tibble")
+Data <- as_data_frame(Data)
+
+#Labelling
+student = Data$Student.Identifier
+year = Data$Year
+domint = Data$Domestic.Intl
+```
+
+
+
+```{r, echo= F}
+library(ggplot2)
+
+n_occur <- data.frame(table(Data$Student.Identifier))
+p = ggplot(n_occur, aes(x = Freq))
+p + geom_bar() + labs(title = 'Number of units studied by students', subtitle = 'Years 2012 - 2017', x= 'Number of units', y = 'Students')
+```
+
+
+
+```{r, echo= F}
+
+
+n_occur <- data.frame(table(Data$Student.Identifier, Data$Unit.of.Study))
+n <- n_occur[n_occur$Freq > 0,]
+f = ggplot(n, aes(x = Freq-1))
+
+f + geom_bar() + labs(title = "Number of repeated units" , y = 'Number of students', x = 'Times repeated')
+
+
+data.frame(table(n$Freq-1))
+```
+
+###Conclusion:from results it can be seen that most students do 4 units of study underneath the department of maths. Whilst most students pass the unit on their first try, there is still a sizable group who fail, whilst failing once is of little concern. And almost no students fail more than once, but when a student fails a single unit up to 4 times it begs the question of how this can be allowed.
+
+
+
+##Statistical test:
+###The sample contains the students who have done mainstream unit A in 2017 based on the dataset. Hence, the population is university students who are doing the same units as the table in 2017.
+
+###Question: To know mean of the grades is in our population.
+
+###Firstly, the grades are converted to numerical data: FA = 1, PS = 2, CR = 3, DI = 4, HD = 5. Since no information about the mean of the course is available, the  assumption is that the mean of the population is CR = 3.
+
+###With CR = 3 as the null Hypothesis (H0) and H1 claims that the mean is not 3. With significance level at 0.05
+
+
+```{r, echo = F}
+unit_a <- data[data$Unit.of.Study == "Unit A" & data$Year == "2017",]
+grades <- factor(unit_a$Unit.of.Study.Grade, levels = c("FA", "PS", "CR", "DI", "HD"), labels = c(1, 2, 3, 4, 5))
+grades1<- as.numeric(grades, length = 5)
+data_2017 <- data.frame(unit_a$Student.Identifier, unit_a$Year, unit_a$Domestic.Intl, unit_a$Gender, unit_a$Mode, unit_a$Age, unit_a$Unit.of.Study, unit_a$Unit.of.Study.Level, grades1)
+
+
+size = nrow(data_2017)
+expected_mean = 3
+significance_level = 0.05
+par(mfrow = c(2, 2))
+hist(data_2017$grades1, prob=T, xlab = "Grades", main = "Histogramm of Students' Grades")
+m = mean(data_2017$grades1)
+s = sd(data_2017$grades1)
+m
+s
+curve(dnorm(x, mean = m, sd = s), col = "darkgreen", lwd = 2, add = TRUE)
+boxplot(data_2017$grades1, main = "Boxplot of Grades")
+qqnorm(data_2017$grades1, main = "Q-Q plot of The Sample")
+shapiro.test(data_2017$grades1)
+
+
+tobs = (m - expected_mean)/(s/sqrt(size))
+tobs
+
+t.test(data_2017$grades1, mu = 3)
+```
+
+| Observed mean | Expected mean | Sample Size | Standard Deviation | Test Statistic |
+|:-------------:|:-------------:|:-----------:|:------------------:|:--------------:|
+| 2.80          | 3             | 1867        | 1.12               | -7.78          |
+
+| P-value       | Significance Level|
+|:-------------:|:-----------------:|
+|  1.224e-14    | 0.05              |
+###Conclusion: The graphs are relatively symmetric, that signifies normal distribution. After the calculation, it is  seen that the expected mean does not lie between the confidence interval (2.746475 and 2.848598). The P -value, (1.224e-14) is also less than the required significance level. Therefore,  H0 is rejected the mean of the grades for the population is not 3 = CR.
+
+##Further Research Question 1: How could extracurricular activities or having a job affect grades?
+
+##Further Research Question 2: Does student living status(i.e. living with parents, independent living) change grades?
+
+##Further Research Question 3: Can a student’s degree be a factor when predicting Grade?

@@ -1,0 +1,1327 @@
+---
+title: "Module 2 Report"
+author: "480133780, 480378222, 480379414, 480398611"
+date: "21/09/2019"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    toc_depth: 4
+---
+
+```{r, warning= FALSE, message= FALSE}
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)
+library(dplyr)
+library(ggpubr)
+library(plotrix)
+library(kableExtra)
+library(janitor)
+library(plyr)
+library(forcats)
+library(ICSNP)
+library(arrangements)
+library(devtools)
+library(dplyr)
+library(rlang)
+library(gendercodeR)
+```
+
+
+
+***
+# Cleaning
+***
+
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+x = read_csv("survey_data.csv") %>% 
+  janitor::clean_names() %>% 
+  dplyr::rename(postcode = postcode_of_where_you_live_during_semester,
+         units = what_statistics_courses_have_you_taken,
+         clubs = how_many_university_clubs_are_you_a_member_of,
+         dentist = how_long_has_it_been_since_you_last_went_to_the_dentist,
+         study = on_average_how_many_hours_per_week_did_you_spend_on_university_work_last_semester,
+         social_media = what_is_your_favourite_social_media_platform,
+         siblings = how_many_siblings_do_you_have,
+         exercise = how_many_hours_a_week_do_you_spend_exercising,
+         pet_growing_up =did_you_have_a_pet_growing_up ,
+         live_with_parents = do_you_currently_live_with_your_parents,
+         eye_colour = what_is_your_eye_colour,
+         hrs_employed = how_many_hours_per_week_do_you_work_in_paid_employment,
+         fav_season = what_is_your_favourite_season_of_the_year,
+         shoe_size = what_is_your_shoe_size,
+         height = how_tall_are_you,
+         floss_frequency = how_often_do_you_floss_your_teeth,
+         glasses = do_you_wear_glasses_or_contacts,
+         handedness = what_is_your_dominant_hand,
+         doneness = how_do_you_like_your_steak_cooked)
+length(x$glasses)
+```
+
+```{r, warning= FALSE, message= FALSE, results='hide'}
+# use GendeR package see lecture where he does this
+x = x %>% 
+  mutate(recoded_gender = gendercodeR::recode_gender(gender))
+unique(x$recoded_gender)
+```
+
+```{r, warning= FALSE, message= FALSE, results='hide'}
+#postcode
+x = x %>% 
+  mutate(
+    postcode = case_when(
+      postcode < 0 ~ NA_real_,
+      #condition to add ===>>>> not four digits
+      TRUE ~ postcode
+    )
+  )
+
+# units
+x = x %>% 
+  mutate(
+    units = case_when(
+      #condition to add ===>>>> after splitting on ',', only take if in list of units.
+      TRUE ~ units
+    )
+  )
+
+#num stat units taken
+
+# clubs
+x = x %>% 
+  mutate(
+    clubs = case_when(
+      clubs < 0 ~ NA_real_,
+      clubs > 50 ~ NA_real_,
+      TRUE ~ clubs
+    )
+  )
+
+#dentist (is clean)
+
+#study
+x = x %>% 
+  mutate(
+    study = case_when(
+      study < 0 ~ NA_real_,
+      study > 24*7 ~ NA_real_, #this could probably decrease =====> maybe 80 hrs max
+      TRUE ~ study
+    )
+  )
+
+#social media
+x = x %>% 
+  mutate(
+    social_media = case_when(
+      str_to_lower(social_media) == "reddit" ~ "Reddit",
+      str_to_lower(social_media) == "facebook" ~ "Facebook",
+      str_to_lower(social_media) == "fb" ~ "Facebook",
+      str_to_lower(social_media) == "facebook messenger" ~ "Facebook",
+      str_to_lower(social_media) == "youtube" ~ "Youtube",
+      str_to_lower(social_media) == "discord" ~ "Discord",
+      str_to_lower(social_media) == "twitter" ~ "Twitter",    
+      str_to_lower(social_media) == "titktok" ~ "Ticktok",
+      str_to_lower(social_media) == "grindr" ~ "Grindr",
+      str_to_lower(social_media) == "instagram" ~ "Instagram",
+      str_to_lower(social_media) == "ig" ~ "Instagram",
+      str_to_lower(social_media) == "wechat" ~ "Wechat",
+      str_to_lower(social_media) == "weibo" ~ "Weibo",
+      str_to_lower(social_media) == "tumblr" ~ "Tumblr",
+      str_to_lower(social_media) == "snapchat" ~ "Snapchat",
+      social_media == "L I N K E D I N" ~ "Linkedin",
+      social_media == "google" ~ "Google",
+      social_media == "-=-=-" ~ NA_character_,
+      str_to_lower(social_media) == "none" ~ NA_character_,
+      social_media == "I never use social media." ~ NA_character_,
+      TRUE ~ social_media
+    )
+  )
+
+#siblings
+x = x %>% mutate(siblings = case_when(
+  siblings < 0 ~ NA_real_,
+  TRUE ~ siblings
+))
+
+# pet is clean
+
+#live with parents is clean
+
+#excercise
+x = x %>% mutate(exercise = as.numeric(exercise))
+x = x %>% 
+  mutate(
+    exercise = case_when(
+      exercise < 0 ~ NA_real_,
+      exercise > 24*7 ~ NA_real_, 
+      TRUE ~ exercise
+    )
+  )
+
+#eye colour
+x = x %>% 
+  mutate(
+    eye_colour = case_when(
+      str_to_lower(eye_colour) == "black" ~ "Black",
+      str_to_lower(eye_colour) == "balack" ~ "Black",
+      str_to_lower(eye_colour) == "brown" ~ "Brown",
+      str_to_lower(eye_colour) == "blue" ~ "Blue",
+      str_to_lower(eye_colour) == "brown" ~ "Brown",
+      str_to_lower(eye_colour) == "dark brown" ~ "Brown",
+      str_to_lower(eye_colour) == "hazelnut" ~ "Hazel",
+      str_to_lower(eye_colour) == "hazel" ~ "Hazel",
+      eye_colour == "blood" ~ NA_character_,
+      eye_colour == "NULL" ~ NA_character_,
+      eye_colour == "&" ~ NA_character_,
+      TRUE ~ eye_colour))
+
+#hrs employed
+x = x %>% mutate(hrs_employed = case_when(
+  hrs_employed < 0 ~ NA_real_,
+  hrs_employed > 24*7 ~ NA_real_,
+  TRUE ~ hrs_employed
+))
+x = x %>% mutate(hrs_employed = as.numeric(hrs_employed))
+
+# fav season is clean
+
+#shoe size ===================>>>>>>>>>>>>> maybe more cleaning here
+x = x %>% mutate(shoe_size = case_when(
+  shoe_size < 0 ~ NA_real_,
+  shoe_size > 100 ~ NA_real_,
+  TRUE ~ shoe_size
+))
+x = x %>% mutate(shoe_size = as.numeric(shoe_size))
+unique(x$shoe_size)
+
+#height
+x = x %>% 
+  mutate(
+    height = case_when(
+      height > 230 ~ NA_real_,
+      height < 1.1 ~ NA_real_,
+      height < 2.30 ~ height*100,
+      TRUE ~ height
+    )
+  )
+
+#floss is clean
+
+#glasses is clean
+
+#handedness is clean =================>>>>>>>>>>>>> has ambidextrous
+
+#doneness
+doneorder = c("I don't eat red meat", "Blue", "Rare", "Medium-rare", "Medium", "Medium-well done", "Well done", NA)
+x = x %>% mutate(doneness = factor(doneness, doneorder, ordered=TRUE))
+
+
+```
+
+```{r, warning= FALSE, message= FALSE}
+write.csv(x, "clean_survey_data.csv")
+
+
+```
+
+__Data cleaning process__
+
+Initially we converted each of the coloumn names from the long question form to a shorter name. Then for all the variables we checked to make sure that the values made sense, using the function 'mutate' in conjunction with 'case_when' to adjst these values. Non-reasonable values were given NA values. Some variables that required different cleaning were:
+
+*gender* - We used the **gendercodeR** package to interpret the plethora of gender inputs, and resulted in the categories 'male', 'female' and 'non-binary'.
+
+*social_media and eye_colour* - We had to manually assign the unique values to known categories to account for typing errors, case differences and NA values.
+
+*doneness* - We converted the doneness categorie into and ordered factor variable, from "I don't eat red meat" to "Well done"
+
+Apart from these, several of the variables were in a usable format and did not require any cleaning. These were often the binary yes/no questions. If further cleaning was needed in any part of the data, they were done in their respective questions.
+
+
+
+
+***
+# Question 1 
+***
+
+_**Is this a random sample of DATA2002 students?**_
+
+
+This data is not a random sample of DATA2002 students since DATA2902 students were allowed to complete the survey and are included in the sample. Thus, we can re-form this question to address the nature of the sampling of the data.
+
+The new question will be:
+
+*"Is this a random sample of DATA2X02 students?".*
+
+There are two conditions for to satisfy random sampling [1]:
+
+ 1. Each observation has a non-zero probability of being selected.
+ 
+ - Each student was able to complete the survey(access to the internet/canvas).
+ 
+ 2.We have accurate knowledge of this probability, known as the inclusion probability, for each element in the sampling frame.
+ 
+ - The probability of response/inclusion is approximately 1/3 for each student, based on the survey response rate. (Assuming ~300 students in the DATA2X02 cohort)
+ 
+Thus, we can maintain the assumption that this is a random sample.
+
+
+
+***
+# Question 2
+***
+
+_**What are the potential biases in this data generation?**_
+
+To answer this, the nature of selection must be addressed. Notice was given to all DATA2X02 students to complete a survey on the DATA2X02 ed forum, they were reminded in the lectures and in their tutorials. Completion of the survey was not compulsory.
+
+There are 2 issues with this method that are cause to question the potential selection biases of this data.
+
+ - Participation bias/Non-response bias
+
+Although methods were put in place to ensure that all students knew about the survey, some students may have missed or failed to notice its existence. This may be due to skipping lectures, tutorials and/or not regularly checking the ed forum.
+
+ - Voluntary response bias.
+
+The non-compulsory aspect allowed for students to not participate. This has affected the response rate since only ~1/3 of the population responded. This may have resulted in students who are particularly assertive or open to particpate and more private/reclusive student not to. However, it is hard to say what might have caused students to participate or refrain from participating.
+
+In terms of collecting data once students have decided to complete the survey, we must address if the intrinsic nature of the survey affecting how students responded to the questions.
+   
+ - Reporting Bias
+   
+Some questions were identifying such as postcode, height, shoe size, eye colour, glasses. This may have caused the suppression of correct information.
+
+ - Response bias
+ 
+   - Leading questions - There no leading questions in the survey. 
+   - Social desirability - Was a semi-anonymous survey asking only for a nickname.[**]
+   
+   
+Therefore, we could mostly control for response bias. 
+   
+[**See the discussion in question 3 for a deeper discussion of anonymity.]
+   
+***   
+# Question 3
+***
+
+_**Which variables are most likely to be subjected to this bias?**_
+
+Any survey questions that identify an individual are likely to be subject to reporting bias. Although the survey is anonymous, several of the variables fall under this category (listed below) and place the individual in a small subset of DATA2X02 students. For example, information about the single 'Non- Binary' person can be inferred from the data. Thus, the smaller the subset of the sample an individual falls into,  leads to less anonymity and thus may result in lack of reporting of these attributes.
+
+**Sensitive/Identity questions** - "postcode", "eye_colour", "shoe_size", "height", "glasses"
+
+***
+# Question 4
+***
+
+_**Is there any evidence to suggest that there’s a difference in the amount of exercise done by people who eat red meat compared to people who don’t eat red meat?**_
+
+**Import Data**
+```{r, message= FALSE, warning= FALSE}
+filename = "clean_survey_data.csv"
+
+sdata = read.csv(filename, header = T, na = c("NA",""," ")) %>%
+  janitor::clean_names()
+vars = names(sdata)
+
+
+```
+
+
+**Visualisation**
+
+
+```{r, message= FALSE, warning= FALSE}
+nasdat = sdata %>% filter(!is.na(doneness), !is.na(exercise)
+)
+
+vmeat = forcats::fct_collapse(nasdat$doneness,
+                      yes_to_red_meat = c("Medium-rare", "Medium-well done", "Medium", "Well done", "Rare", "Blue"),
+                      no_to_red_meat = c("I don't eat red meat"))
+
+vexer = nasdat$exercise
+
+ggplot(nasdat, aes(x=vmeat, y=vexer)) + 
+  geom_boxplot() +
+  labs(x="Eat red meat or not", y = "The amount of exercise") + 
+  ggtitle("The Amount of Exercise vs Red Meat Consumption")
+```
+
+
+## Normality Check
+
+The boxplot is quite symmetric as no skewness could be observed. In the QQ plot, there is a fair number of points which are not closely aligned along the line. As a result, the normality assumption is not satisfied and a non-parametic test would be a safer bet in this case.
+
+In addition, both sign test and Wilcoxon signed-rank test require paired samples, ie each observation has a corresponding one. However, the survey data is a single sample with two groups of people who eat or do not eat red meat. __Wilcoxon rank-sum test__ would be ideal in this case.
+
+```{r, message= FALSE, warning= FALSE}
+exercise = sdata$exercise
+
+par(mfrow = c(1, 2))
+boxplot(exercise,main = "Hour of Exercise per Week", ylab = "Hour")
+qqnorm(exercise, main = "Hour of Exercise per Week", ylab = "Hour", xlab = "")
+qqline(exercise)
+```
+
+
+**Generate dataframes**
+```{r, message= FALSE, warning= FALSE}
+exercise = sdata$exercise
+meat = sdata$doneness
+
+exercise_meat = tibble(exercise, meat) %>% drop_na()
+# sdata$doneness[sdata$doneness!="I don't eat red meat"]
+# exercise_meat$meat=="I don't eat red meat"
+
+exer_yes_meat = exercise_meat %>% filter(exercise_meat$meat!="I don't eat red meat")
+exer_no_meat = exercise_meat %>% filter(exercise_meat$meat=="I don't eat red meat")
+
+yes = exer_yes_meat$exercise
+no = exer_no_meat$exercise
+
+meat_consumption = data.frame(
+  exercise = c(yes,no),
+  red_meat = c(rep("yes", length(yes)),
+             rep("no", length(no)))
+)
+
+
+# meat_consumption
+```
+
+
+## Wilcoxon rank-sum test
+
+It is a non-parametric test to compare the means of two independent samples, which relaxes the assumptions of normality and symmetry.
+
+It is evident in the plots that the symmetry is reasonable, but the normality is not great.
+
+
+```{r, message= FALSE, warning= FALSE}
+# exer_meat_box = ggplot(meat_consumption, aes(x = red_meat, y = exercise)) +
+#   geom_boxplot() +
+#   theme(text = element_text(size=10))
+
+exer_meat_distro = ggplot(meat_consumption,aes(x = exercise, fill = red_meat))+
+  geom_density(alpha = 0.5) +
+  theme_bw(base_size = 14) +
+  xlim(-20, 30) +
+  labs(x="The amount of exercise (Hours)", y = "Density") + 
+  ggtitle("The amount of exericise with respect to red meat consumption") + 
+  guides(fill=guide_legend(title = "Red Meat Consumption")) +
+  theme(text = element_text(size=10))
+
+exer_meat_distro
+# plot_grid(exer_meat_box, exer_meat_distro)
+```
+
+
+__Hypothesis__
+
+$H_{0}$: $\mu_{x} = \mu_{y}$
+
+$H_{1}$: $\mu_{x} > \mu_{y}, \mu_{x} < \mu_{y}, \mu_{x} \ne \mu_{y}$
+
+__Assumption__: $\textit{X}_{i}$ and $\textit{Y}_{i}$ are independent and follow the same distribution but differ by a shift to the right. (Evident in the plot)
+
+__Test statistic__: $\textit{W} = \textit{R}_{1} + \textit{R}_{2} +...+ \textit{R}_{n_{x}}$. Under $H_{0}$, $\textit{W}$ follows the $\textit{WRS}(n_{x}=100, n_{y}=7)$ distribution. In other words, under $H_{0}$, $\textit{W} \sim WRS(100,7)$ distribution.
+
+__Observed test statistic__: $w = r_{1} + r_{2} +...+ r_{n_{x}} = 5354.5$
+
+__p-value__: $\textit{P}(\textit{W} \geqslant w)$ for $H_{1}: \mu_{x} > \mu_{y}$ or $\textit{P}(\textit{W} \leqslant w)$ for $H_{1}: \mu_{x} < \mu_{y}$; $2\textit{P}(\textit{W} \geqslant w)$ if $w > \frac{n_{x}(N+1)}{2}$ and $H_{1}: \mu_{x} \ne \mu_{y}$; $2\textit{P}(\textit{W} \leqslant w)$ if $w < \frac{n_{x}(N+1)}{2}$ and $H_{1}: \mu_{x} \ne \mu_{y}$
+
+$2\textit{P}(\textit{W} \leqslant w)$ because $w = 5354.5 < \textit{E}(\textit{W}) = \frac{n_{x}(N+1)}{2} = 5400$ and $H_{1}: \mu_{x} \ne \mu_{y}$, so we are looking at the lower tail for the sample of people eating red meat. p-value = 0.5656592
+
+$2\textit{P}(\textit{W} \geqslant w)$ because $w = 423.5 > \textit{E}(\textit{W}) = \frac{n_{x}(N+1)}{2} = 378.0$ and $H_{1}: \mu_{x} \ne \mu_{y}$, so we are looking at the upper tail for the sample of people not eating red meat. p-value = 0.5825673.
+
+p-value = 0.5681 generated by R function.
+
+__Decision__: As the p-value is greater than $\alpha$ = 0.05, the data is consistent with $H_{0}$ and $H_{0}$ is retained. There is no evidence to suggest that there is a difference in the amount of exercise done by people who eat red meat compared to people who don't eat red meat.
+
+
+
+```{r, message= FALSE, warning= FALSE}
+q4dat = meat_consumption %>% mutate(r = rank(exercise))
+# q4dat
+
+w_yes = sum(q4dat$r[q4dat$red_meat == "yes"])
+# w_yes
+
+q4dat %>%
+  dplyr::group_by(red_meat) %>%
+  dplyr::summarise(
+  w = sum(r),
+  xbar = mean(exercise),
+  s = sd(exercise),
+  n = dplyr::n()
+) %>%
+  kable() %>% 
+  kable_styling(bootstrap_options = c("hover", "condensed"), full_width = TRUE)
+
+ggplot(q4dat, aes(x = red_meat, y = exercise)) +
+  geom_boxplot() +
+  geom_dotplot(stackdir = "center",
+               binaxis = "y") +
+  theme_linedraw(base_size = 14) +
+  labs(y = "The amount of exercise (Hours)",
+       x = "Red meat consumption") +
+  ggtitle("The Amount of Exercise vs Red Meat Consumption")
+```
+
+
+```{r, message= FALSE, warning= FALSE}
+sum_q4dat = q4dat %>% 
+  dplyr::group_by(red_meat) %>% 
+  dplyr::summarise(n = n(),
+            w = sum(r))
+
+n_yes = sum_q4dat$n[sum_q4dat$red_meat == "yes"]
+n_no = sum_q4dat$n[sum_q4dat$red_meat == "no"]
+```
+
+
+**People eat red meat**
+
+```{r, message= FALSE, warning= FALSE}
+w_yes = sum_q4dat$w[sum_q4dat$red_meat == "yes"]
+ew_yes = n_yes * (n_yes + n_no + 1)/2
+minw_yes = n_yes * (n_yes + 1)/2
+
+c(minw_yes, w_yes, ew_yes)
+```
+
+_w_yes < ew_yes -- lower tail_
+
+```{r}
+2 * pwilcox(w_yes - minw_yes - 1, n_yes, n_no,
+            lower.tail = TRUE)
+```
+
+
+**People do not eat red meat**
+
+```{r}
+w_no = sum_q4dat$w[sum_q4dat$red_meat == "no"]
+ew_no = n_no * (n_yes + n_no + 1)/2
+minw_no = n_no * (n_no + 1)/2
+
+c(minw_no, w_no, ew_no)
+```
+
+
+_w_no > ew_no -- upper tail_
+
+```{r, message= FALSE, warning= FALSE}
+2 * pwilcox(w_no - minw_no - 1, n_yes, n_no,
+            lower.tail = FALSE)
+```
+
+_R function_
+
+```{r, message= FALSE, warning= FALSE}
+yesm_dat = q4dat %>% filter(q4dat$red_meat=="yes")
+yesm = yesm_dat$exercise
+
+nom_dat = q4dat %>% filter(q4dat$red_meat!="yes")
+nom = nom_dat$exercise
+
+wilcox.test(yesm, nom)
+
+```
+
+## Advanced
+
+__Permutation Test__
+
+A permutation test using the difference in medians is suitable in this case as it is robust to the outliers we have in our dataset. The test statistic is consistent with the p-value we have from the Wilcoxon rank sum test since both p-values are greater than $\alpha = 0.05$. As a result, the null hypothesis is retained - There is no evidence to suggest that there is a difference in the amount of exercise done by people who eat red meat compared to people who don't eat red meat.
+
+```{r}
+median_yes = median(yesm)
+median_no = median(nom)
+
+permuted_dat = q4dat
+
+t0_original = median_yes-median_no
+
+B = 10000
+t_null = vector("numeric", length = B)
+
+for(i in 1:B){
+  permuted_dat$exercise = sample(q4dat$exercise)
+  perm_yes = median(permuted_dat$exercise[permuted_dat$red_meat=="yes"])
+  perm_no = median(permuted_dat$exercise[permuted_dat$red_meat=="no"])
+  t_null[i] = perm_yes - perm_no
+}
+
+mean(t_null >= t0_original)
+
+hist(t_null,breaks = 50)
+abline(v = t0_original, lwd = 2, col = "red")
+```
+
+***
+# Question 5
+***
+
+_**Is weekly exercise time different for students who are in more than three clubs at university; in comparison to students who are not.**_
+
+## Create dataframes:
+```{r,message=FALSE,warning=FALSE}
+dat = readr::read_csv('clean_survey_data.csv', na = c("","NA","n/a"), guess_max = 1e6)
+three_or_more = dat %>%
+  filter(clubs >= 3)
+less_than_three = dat %>% 
+  filter(clubs < 3)
+```
+## Check normality:
+Before performing any statistical tests the data is plotted below to determine the distribution of the excerise hours per week:
+```{r,message=FALSE,warning=FALSE}
+dat %>% 
+  drop_na(clubs) %>% 
+  ggplot(dat, mapping = aes(x = (clubs >= 3), y = exercise)) + geom_boxplot() + geom_jitter(width = 0.05, size = 1, colour = "blue") + theme_dark(base_size = 28) + labs(x = "", y = "hours of exercise a week", title = "Exercise per week by club membership") + theme(plot.title = element_text(size = 20),axis.title.y = element_text(size = 20)) 
+```
+
+It's clear that both follow a similar distribution, it appears to be a right skew normal distribution. A histogram and qqplot is included below:
+```{r,message=FALSE,warning=FALSE}
+a = ggplot(three_or_more, aes(x = exercise)) + geom_bar() + labs(x ="Hours per week", y = "frequency")
+b = ggplot(three_or_more, aes(sample = exercise)) + stat_qq()+ stat_qq_line() + labs(y ="Hours per week", x="")
+
+plot_grid(a,b)
+
+
+a = ggplot(less_than_three, aes(x = exercise)) + geom_bar() + labs(x ="Hours per week", y = "frequency")
+b = ggplot(less_than_three, aes(sample = exercise)) + stat_qq()+ stat_qq_line() + labs( y = "hours of exercise", x="")
+
+plot_grid(a,b)
+```
+
+From these graphs, its safe to say that the data follows a normal distribution and is right skewed.
+The variance and means of the populations are below:
+```{r,message=FALSE,warning=FALSE}
+vars = c(var(three_or_more$exercise),var(less_than_three$exercise))
+means = c(mean(three_or_more$exercise),mean(less_than_three$exercise))
+print("variance of 3 or more clubs and less than 3 clubs:")
+vars
+print("mean of 3 or more clubs and less than 3 clubs:")
+means
+```
+The means are quite close but the variance differ by a decent amount. Along with the skewness of our data this rules out the use of a two sided t test or a welch test, so a wilcoxon rank sum test wil be used as both samples follow the same distribution. 
+
+To summarise; the two sets of data are close to identically distributed and have similar variances however are still quite different. So a two sided t test is used as well as welch test so that equal variance does not need to be assumed. Where the null hypothesis is that there is no difference in exercise times between the two populations.
+
+## Wilcox rank sum test and conclusions:
+We will test the following:
+
+$$
+H_0: u_{d} = u_i\\
+H_1: u_d > u_i \\
+\alpha = 0.05
+$$
+where $u_i$ is the mean exercise time for those in less than three clubs and $u_d$ is for students in more than three clubs.
+
+```{r,message=FALSE,warning=FALSE}
+wilcox.test(three_or_more$exercise, less_than_three$exercise, alternative = "greater", correct = FALSE)
+```
+
+The p -value is 0.6513 > $\alpha$, which indicates that our null hypothesis is true $\implies$  No difference in exercise hours per week for those in less than three clubs and those in more than three clubs. This is a somewhat expected result as if you are in less clubs you have more time to do other activities such as exercise, but some of those clubs may include exercise and so you get a similar mean time for both groups. It's difficult to elaborate further as we do not have access to which clubs people attend or how much time a week they spend doing club activities.
+
+
+***
+# Question 6
+***
+
+
+_**Is there evidence that students who live with their parents study more hours per week than students who don’t live with their parents?**_
+
+```{r, warning= FALSE, message= FALSE}
+data = read.csv("clean_survey_data.csv")
+```
+
+
+
+Before we do any test, we will omit the N/A values from Column `live_with_parents` and split the data into students who live with parents and students who do not.
+
+```{r, warning= FALSE, message= FALSE}
+independent = data[data$live_with_parents == "No" & !is.na(data$live_with_parents) & !is.na(data$study),]
+
+dependent = data[data$live_with_parents == "Yes" & !is.na(data$live_with_parents) & !is.na(data$study),]
+
+
+
+data = data[!is.na(data$live_with_parents),]
+```
+
+After that, we would like to see if the study hours for each sample follows a normal distribution.
+
+```{r, warning= FALSE, message= FALSE}
+student_dotplot = ggdotplot(data, x = "live_with_parents", y= "study",color = "live_with_parents", palette = "jco")+labs(col = "Independence")+xlab("Independence")
+
+student_boxplot = ggboxplot(data, x = "live_with_parents", y= "study",color = "live_with_parents", palette = "jco")+labs(col = "Independence")+ylab("Study Hours")+xlab("Independence")
+
+
+merged_plot = ggarrange(student_boxplot, student_dotplot)
+
+annotate_figure(merged_plot, top = text_grob("Study Hours Based on Independence", color = "blue", face = "bold"))
+```
+
+As we can see, the plots look not only similar, but follows a distribution that is somewhat normal. We can also see that there are two outliers. So we omit those, and for confirmation that a sample is normal, we also do a Shaphiro-Wilk test.
+
+```{r, warning= FALSE, message= FALSE}
+dep_qq = ggplot(dependent, aes(sample = dependent$study))+stat_qq()+stat_qq_line()+xlab("Yes")+ylab("study hours")
+ind_qq = ggplot(independent, aes(sample = independent$study))+stat_qq()+stat_qq_line()+xlab("No")+ylab("study hours")
+
+part_table = ggarrange(dep_qq, ind_qq)
+
+merge_plot2 = ggarrange(dep_qq, ind_qq, ncol = 2, nrow = 2)
+sum_table = desc_statby(data, grps = "live_with_parents", measure.var = "study")
+sum_table = sum_table[, c("live_with_parents", "mean", "median", "sd", "length")]
+colnames(sum_table) <- c("Independence", "mean", "median", "sd", "n")
+
+sum_table = ggtexttable(sum_table, rows = NULL, theme = ttheme("lBlue"))
+
+
+merge_plot2 = ggarrange(part_table,sum_table,ncol = 1, nrow = 2)
+annotate_figure(merge_plot2, top = text_grob("QQ-plot of Study Hours", color = "blue", face = "bold"))
+```
+
+
+```{r, warning= FALSE, message= FALSE}
+#Omit extreme values
+
+independent = subset(independent, study < 100)
+dependent = subset(dependent, study < 100)
+```
+
+```{r, warning= FALSE, message= FALSE}
+shapiro.test(independent$study)
+shapiro.test(dependent$study)
+```
+
+After we did the observation and omitted the extreme values, we can decide what test we use. Since, we have two samples that are independent (live with parents or not), and they follow a normal distribution, We can use Two Sample $t$-test, Welch Two Sample $t$-test or Wilcoxon Sum Rank Test.
+
+##Test
+
+For Welch Two Sample $t$-test, we would need to see if the standard deviations are significantly different. Even though we saw that they are different above, we did not omit the extreme values there.
+
+```{r, warning= FALSE, message= FALSE}
+c(sd(independent$study), sd(dependent$study))
+```
+Since they are fairly similar, we will not choose the Welch Two Sample $t$-test. With Two Sample $t$-test, we would not be able to tell if the mean of one sample is larger than the other, since the alternative hypothesis would only state that the two mean is not equal.
+
+Therefore, we use the Wilcoxon Sum Rank Test:
+
+$$
+H_0: u_{d} = u_i\\
+H_1: u_d > u_i\\
+\alpha = 0.05
+$$
+Where $u_i$ is the mean hour of study for independent students, and $u_d$ is for students living with their parents.
+
+```{r, warning= FALSE, message= FALSE}
+result= wilcox.test(dependent$study, independent$study, alternative = "greater", correct = FALSE)
+result
+```
+So our test-statistic is 1346 and $p$-value is 0.5439 $> \alpha$. Therefore, we keep the null hypthesis, and we can say that there is no evidence that students who lives with their parents, study more.
+
+
+##Permutation Test (Advanced)
+***
+
+Now, we would like to compare our test-statistic to the result of the Permutation test and see how likely we would get the same or larger test-statistic.
+
+```{r, warning= FALSE, message= FALSE}
+B = 10000
+perm_data = subset(data[!is.na(data$live_with_parents) & !is.na(data$study),], study < 100)
+t_null = vector(mode = "numeric", length = B)
+
+
+for(i in 1:B){
+  
+  perm_data$live_with_parents = sample(perm_data$live_with_parents, replace = FALSE)
+  independent = subset(perm_data, live_with_parents == "No")
+  dependent = subset(perm_data, live_with_parents == "Yes")
+  t_null[i] = wilcox.test(dependent$study, independent$study, alternative = "greater", correct = FALSE)$statistic
+}
+
+mean(abs(t_null) >= abs(result$statistic))
+```
+The $p$-value of our Permutation Test is 0.5389. Let's plot the test-statistic:
+
+```{r, warning= FALSE, message= FALSE}
+
+data.frame(t_null) %>% ggplot(., aes(x = t_null)) + geom_histogram(binwidth = 0.3) + theme_linedraw(base_size = 20) +geom_vline(xintercept = abs(result$statistic), col = "red", lwd = 1) + xlab("Test statistic")+ylab("Count")+ggtitle("Permutation Test")
+
+```
+Therefore, we can fairly say that the Permutation Test would give us similar result as the Wilcoxon Sum Rank Test.
+
+***
+# Question 7
+***
+
+## 7.1
+***
+
+### Distribution
+
+_**Work and Study**_
+
+
+```{r, warning= FALSE, message= FALSE}
+work = subset(data[!is.na(data$exercise) & !is.na(data$hrs_employed),], study < 100)
+```
+
+We would like to see if those who work and exercise less than the average, study more than those who work and exercise more. First we need to find the sample mean and standard error.
+
+
+
+So mean and standard error are around:
+```{r, warning= FALSE, message= FALSE}
+mean_work = mean(work$exercise +work$hrs_employed)
+mean_work
+std.error(work$exercise +work$hrs_employed)
+```
+
+
+Remember, the sample mean is not the population mean, therefore there could be error if we split the data based on that. However, the population mean is unkown, so to be strict with deciding who works hard and who not, we will observe the confidence interval and choose the most extreme value there. To be able to do that, we need to see if our sample is normal to decide if we need to get our value with bootstrapping or not:
+
+```{r, warning= FALSE, message= FALSE}
+a = ggplot(work, aes(sample= work$exercise+work$hrs_employed))+stat_qq()+stat_qq_line()+xlab("")+ylab("Work and exercising hours")+ggtitle("Time on Work and Exercise")
+
+b = ggplot(work, aes(y= work$hrs_employed+work$exercise, palette = "jco"))+geom_boxplot() +labs(col = "Work and exercising hours")+ylab("Study Hours")+xlab("")+ggtitle("Time on Work and Exercise")
+
+plot_grid(a,b)
+```
+
+```{r, warning= FALSE, message= FALSE}
+shapiro.test(work$hrs_employed+work$exercise)
+```
+
+As we can see, the sample does not follow normal distribution as it is skewed. Therefore, to get the 95% confidence interval of the mean, we will do bootstrapping for recreating the same distribution as our data.
+
+```{r, warning= FALSE, message= FALSE}
+set.seed(123)
+B = 10000
+result = vector(mode = "numeric", length = B)
+
+for (i in 1:B) {
+  new = sample(work$exercise+work$hrs_employed, replace = TRUE)
+  result[i] = mean(new)
+}
+```
+
+```{r, warning= FALSE, message= FALSE}
+hist(result,col = "lightblue", xlab = "Mean", ylab = "Frequency", title = "Bootstrap Histogramm")
+```
+
+
+95% Confidence interval:
+
+```{r, warning= FALSE, message= FALSE}
+quantile(result, c(0.025,0.975))
+```
+
+### Visualisation
+
+Alright, we have a good reason to set our mean of work+exercise and divide our sample into two groups using 12.938848 as our mean:
+
+```{r, warning= FALSE, message= FALSE}
+mean_work = max(quantile(result, c(0.025,0.975)))
+
+work_more = subset(work, exercise + hrs_employed > mean_work)
+work_less = subset(work, exercise + hrs_employed <= mean_work)
+
+less_boxplot = ggboxplot(work_less, y= "study",color = "blue", palette = "jco")+labs(col = "Independence")+ylab("Study Hours")+xlab("work+exercise less")
+
+more_boxplot = ggboxplot(work_more, y= "study",color = "yellow", palette = "jco")+labs(col = "Independence")+ylab("Study Hours")+xlab("work+exercise more")
+
+merged_plot = ggarrange(less_boxplot,more_boxplot)
+
+```
+
+```{r, warning= FALSE, message= FALSE}
+table = c("work and exercise less", "work and exercise more",round(mean(work_less$study),1), round(mean(work_more$study),1),median(work_less$study), median(work_more$study), round(sd(work_less$study),1),round(sd(work_more$study),1), nrow(work_less), nrow(work_more))
+
+
+table = as.table(matrix(table, nrow = 2, ncol = 5))
+colnames(table) <- c("category", "mean", "median", "sd","n")
+table = ggtexttable(table, rows = NULL, theme = ttheme("lBlue"))
+
+merged_plot_final = ggarrange(merged_plot, table, ncol = 1, nrow = 2)
+
+
+annotate_figure(merged_plot_final, top = text_grob("Statistics of people who work less and who work more than the Average", color = "blue", face = "bold"))
+
+```
+
+Check normality with QQ-plot:
+
+```{r, warning= FALSE, message= FALSE}
+less_qq = ggplot(work_less, aes(sample = work_less$study))+stat_qq()+stat_qq_line()+xlab("work+exercise less")+ylab("study hours")+ggtitle("Student Work and Exercise Less")
+more_qq = ggplot(work_more, aes(sample = work_more$study))+stat_qq()+stat_qq_line()+xlab("work+exercise more")+ylab("study hours")+ggtitle("Student Work and Exercise More")
+
+plot_grid(less_qq, more_qq)
+```
+
+```{r}
+shapiro.test(work_less$exercise+work_less$hrs_employed)
+shapiro.test(work_more$exercise+work_more$hrs_employed)
+```
+
+### Test
+
+So far, we can say that we have two independent samples that follow similar distribution. One of the samples (work and exercise more) have a normal distribution while the other sample is a little bit skewed but still somewhat normal. Because of that uncertainty, we will try different methods: Wilcoxon Sum Rank Test, Welch T-test and Permutation Test with median.
+
+__Hypothesis__
+
+$$
+H_0: u_{l} = u_m\\
+H_1: u_l > u_m\\
+\alpha = 0.05
+$$
+where $u_{l}$ is the mean study hour of people with less work and exercise, and $u_m$ is the mean study hour of people with more work and exercise.
+
+__Wilcoxon Sum Rank Test__: For this test, we need to assume that they follow the same distribution and only differ in a shift.
+
+```{r, warning= FALSE, message= FALSE}
+wilcox.test(work_less$study, work_more$study, alternative = "greater")
+```
+
+__Welch Test__: We use this since one could argue that they have differences in variance and sample sizes, and that could affect the distribution of the samples.
+
+```{r, warning= FALSE, message= FALSE}
+t.test(work_less$study,work_more$study,alternative = "greater")
+```
+__Permutation Test with median__: We will see how likely our test statistic appears during a Permutation test. This time, we will use median for robustness.
+
+```{r, warning= FALSE, message= FALSE}
+median_less = median(work_less$study)
+median_more = median(work_more$study)
+perm_data = work
+
+t0_original = median_less-median_more
+t_null = vector("numeric", length = B)
+B = 10000
+for(i in 1:B){
+  perm_data$study = sample(perm_data$study)
+  work_more = subset(perm_data, exercise + hrs_employed > mean_work, study < 100)
+  work_less = subset(perm_data, exercise + hrs_employed <= mean_work, study < 100)
+  
+  median_a = median(work_more$study)
+  median_b = median(work_less$study)
+  t_null[i] = median_b-median_a
+}
+
+mean(t_null >= t0_original)
+```
+
+
+```{r, warning= FALSE, message= FALSE}
+data.frame(t_null) %>% ggplot(., aes(x = t_null)) + geom_histogram(binwidth = 0.3) + theme_linedraw(base_size = 20) +geom_vline(xintercept = t0_original, col = "red", lwd = 1)+xlab("Test-statistic")+ylab("Count")+ggtitle("Permutation Test with Median")
+```
+
+For every tests, we have a $p$-value larger than $\alpha = 0.05$, therefore, we could keep the the null hypothesis, and claim that there is no evidence that students who work and exercise less than the average, study more than those who work and exercise more than the average.
+
+## 7.2
+***
+
+_**Question 7 - Do the data present sufficient evidence to indicate that the frequency of visiting dentists and the frequency of flossing teeth are related?**_
+
+
+__Test for Independence__
+
+This type of test is ideal under the circumstances that the hypothesis to be tested is about the relationship between two qualitative variables in a population.
+
+
+__Hypothesis__
+
+
+$H_{0}$: $$p_{ij} = p_{i·} p_{·j}, i = 1,2; j = 1,2$$
+$H_{1}$: Not all equalities hold.
+
+__Assumption__: $$e_{ij} = y_{i·} y_{·j}/n \geqslant 5$$
+The less common responses have been grouped together to satisfy the assumption. (Checked below)
+
+__Test statistic__: $$T = \sum_{i=1}^{2} \sum_{j=1}^{2} \frac{(Y_i-e_i)^2}{e_i}$$ Under $\textit{H}_{0}$, $T \sim {\chi}^2_{(4-1)(4-1)}$ = $T \sim {\chi}^2_{9}$
+
+__Observed test statistic__: $$t_{0} = \sum_{i=1}^{2} \sum_{j=1}^{2} \frac{(y_{ij} - y_{i·} y_{·j}/n)^2}{y_{i·} y_{·j}/n} = 3.663186$$
+
+__p-value__: $$P(T \geqslant t_0) = 0.05562718$$
+
+__Decision__: As the p-value is greater than $\alpha$ = 0.05, the data is consistent with $H_{0}$ and $H_{0}$ is retained. The data does not present sufficient evidence to indicate that the frequency of visiting dentists and the frequency of flossing teeth are related.
+
+
+### Visualise the data
+
+```{r}
+vden = sdata$dentist
+vflo = sdata$floss_frequency
+
+ggplot(sdata, aes(x = vden, fill = vflo)) + 
+  geom_bar(position = "stack") +
+  labs(x="Frequency of Dentist Visits", y = "Frequency of Flossing") + 
+  ggtitle("The Frequencies of Dentist Visits vs Flossing") + 
+  guides(fill=guide_legend(title = "Flossing Frequency")) +
+  theme(axis.text.x = element_text(size=8, angle=10))
+```
+
+
+
+### Contingency table
+
+
+```{r, results='hide', message= FALSE, warning= FALSE}
+dent_freq = forcats::fct_collapse(sdata$dentist,
+                      within_a_year = c("Less than 6 months", "Between 6 and 12 months"),
+                      more_than_a_year = c("Between 12 months and 2 years","More than 2 years"))
+
+floss_freq = forcats::fct_collapse(sdata$floss_frequency,
+                      daily = c("Every day", "Most days"),
+                      weekly = c("Weekly","Less than once a week"))
+
+# dentist = sdata$dentist
+# floss = sdata$floss_frequency
+
+q7contingent = tibble(dent_freq, floss_freq) %>% drop_na() %>% table()
+# q7contingent = addmargins(q7contingent, FUN = list(Total = sum), quiet = TRUE)
+# # Ref: https://stat.ethz.ch/pipermail/r-help/2007-September/141945.html
+
+yr = apply(q7contingent, 1, sum)
+yc = apply(q7contingent, 2, sum)
+yr.mat = matrix(yr, 2, 2, byrow = FALSE)
+yc.mat = matrix(yc, 2, 2, byrow = TRUE)
+
+ey.mat = yr.mat * yc.mat / sum(q7contingent)
+# ey.mat
+
+all(ey.mat>=5)
+```
+
+_test statistic_
+
+```{r, message= FALSE, warning= FALSE}
+t0 = sum((q7contingent - ey.mat)^2 / ey.mat)
+t0
+```
+
+_p-value_
+
+```{r, message= FALSE, warning= FALSE}
+pval = pchisq(t0, 1, lower.tail=FALSE)
+pval
+```
+
+
+## 7.3
+***
+
+```{r}
+x = read.csv('clean_survey_data.csv')
+```
+
+_**Is the proportion of females wearing glasses different to non-females?**_
+
+We will perform a test of homogeneity to determine if there is evidence in support of this question.
+
+Data Cleaning
+```{r}
+# 2 na values
+num_na = sum(is.na(x$recoded_gender))
+
+x = x %>% 
+  mutate(fem = case_when(
+    recoded_gender == "female" ~ "female",
+    recoded_gender != "female" ~ "non-female",
+    is.na(recoded_gender) == TRUE ~ "non-female"
+    ))
+q_7_dat = x %>% filter(!is.na(fem), !is.na(glasses))
+fem = x$fem[!is.na(x$glasses)& !is.na(x$fem)]
+glasses = x$glasses[!is.na(x$glasses)& !is.na(x$fem)]
+
+```
+We must split the 'recoded_gender' variable into female and non-female, which includes both the male and non-binary people. I used the mutate and case_when functions to create the new variable 'fem'.
+
+
+Now let us perform the test for homogeneity.
+
+```{r}
+ggplot(q_7_dat, aes(x = fem, fill = glasses))+ geom_bar(position = "fill")+xlab("Gender")+ylab("Ratio")+ggtitle("Proportion of females/no-females that wear glasses")+guides(fill=guide_legend(title = "Wear Glasses"))
+
+```
+We can see that there is a difference in the proportion of females that wear glases compared with non-females. Now we will do our hypothesis test. Our assumption is that the proportion of those that wear glasses is constant despite being female or not. Thus:
+
+$$H_0: p_{fem\_wearing\_glasses}=p_{non\_fem\_wearing\_glasses}$$
+$$H_1: p_{fem\_wearing\_glasses}>p_{non\_fem\_wearing\_glasses}$$
+
+Assumptions:
+
+ - Random sample. This assumption is satisfied and discussed in the first question of the report.
+ - Each crosstab count >= 5. This assumption is satisfied.
+
+
+Our observed table is:
+```{r}
+glasses_tab = table(fem, glasses)
+kable(glasses_tab) %>% kable_styling(full_width = TRUE)
+```
+
+Our table of expected values is:
+```{r}
+test = chisq.test(glasses_tab, correct = FALSE)
+kable(round(test$expected, digits = 2)) %>% kable_styling(full_width = T)
+```
+
+The 'chisq.test' function in r provides us with the chi squared observed test statistic, which is:
+
+```{r}
+test$statistic
+```
+
+```{r}
+test$parameter
+```
+
+We can calculate the probability of obtaining a test statistic larger than or equal to the observed test statistic, or p-value, by using a $X^2$ distribution with 1 degree of freedom.
+
+The p-value is:
+
+```{r}
+test$p.value
+```
+
+The p-value is not significant enough to reject $H_0$. 
+
+We can conclude that the proportion of females wearing glasses is not significantly different to the proportion of non-females wearing glasses.
+
+## 7.4 (Advanced)
+***
+_**Hypothesis Testing for a Multivariate Mean Vectors - Are the means of DATA2x02 students the same as the ones of the students at the University of Sydney? **_
+
+
+### Visualise the data
+
+```{r, warning=FALSE}
+a2ex = sdata$exercise
+a2st = sdata$study
+a2em = sdata$hrs_employed
+
+a2box1 = ggplot(sdata, aes(x="", y=a2ex))+
+  geom_boxplot()+
+  labs(x="DATA2x02 students", y = "Exercise (Hours)") + 
+  ggtitle("The number of hourse DATA2x02 students spend exercising per week") +
+  theme(plot.title = element_text(size=7))
+
+a2box2 = ggplot(sdata, aes(x="", y=a2st))+
+  geom_boxplot()+
+  labs(x="DATA2x02 students", y = "Study (Hours)") + 
+  ggtitle("The number of hours DATA2x02 students spend studying per week") + theme(plot.title = element_text(size=7))
+
+a2box3 = ggplot(sdata, aes(x="", y=a2em))+
+  geom_boxplot()+
+  labs(x="DATA2x02 students", y = "Work (Hours)") + 
+  ggtitle("The number of hours DATA2x02 students spend working per week") + theme(plot.title = element_text(size=7))
+
+plot_grid(a2box1, a2box2, a2box3)
+```
+
+
+Using the value of the sample mean and sample covariance:
+$\bar{x} = \begin{bmatrix} 4.048077\\ 29.836538\\ 6.836538\\ \end{bmatrix}$ and $\textit{S} = \begin{bmatrix} 15.502521&-10.24449&7.716673\\ -10.244492 & 418.74001 & 8.827390\\ 7.716673 & 8.82739 & 69.167196\\ \end{bmatrix}$
+respectively and the values of n and p are n = 104 and p = 3 respectively.
+
+
+__Hypothesis__
+
+$H_{0}$: $\mu = \mu_{0} = \begin{bmatrix} 3.85\\ 42\\ 8\\ \end{bmatrix}$
+(Abs.gov.au, 2019); (Sydney.edu.au, 2019, p. 22); (Horin, 2019)
+
+$H_{1}$: $\mu \neq \mu_{0}$
+
+__Assumption__: The observations are drawn from a multivariate normal population $X_{i} \sim N_{101}(\mu, \Sigma)$ where $\mu$ and $\Sigma$ are unknown. 
+
+The normality of the the population has been checkedpreviously on a variable by variable basis. The assumption has not been fully met - the population is not individually normal, but for the purpose of the DATA2902 course, it is still ok proceed to the hypothesis test without meeting the assumption.
+
+The covariance is unknown which is estimated using the sample covariance matrix.
+
+__Test statistic__: Based on the data the observed value of Hotelling's $T^2$-statistic is $T^2 = n(\bar{X}-\mu_{0})^T S^{-1} (\bar{X} - mu_{0})$ = 12.416 where n = 104 and $S$ is the sample covariance matrix.
+
+__p-value__: The p-value is given by $P(\frac{(n-1)p}{(n-p)} F_{3,3} \geqslant T^2)$ where n = 104 and p = 3, which is very small - ie less than 0.0001.
+
+__Conclusion__: Since the p-value is small, the null hypothesis is rejected, such that, the means of DATA2x02 students are not the same as the ones of the students at the University of Sydney.
+
+
+### Generate the dataframe
+```{r}
+students = data.frame(
+  exercise = as.integer(sdata$exercise),
+  study = sdata$study,
+  employed = as.integer(sdata$hrs_employed)
+)
+
+students = students %>% drop_na()
+```
+
+
+### Sample Mean and Covariance
+
+```{r}
+cov = var(students)
+smean = apply(students, 2, mean)
+```
+
+
+
+```{r}
+mu0 = c(3.85, 42, 8)
+n = dim(students)[1] # number of students
+p = 3
+```
+
+### Hotelling's T squared - statistic
+
+```{r}
+denominator = (n-1)*3/(n-p)
+t = n * t(smean - mu0) %*% solve(cov) %*% (smean - mu0)
+pvalue = 1 - pf(t/denominator, df1 = 3, df2 = 101)
+
+pvalue
+
+ICSNP::HotellingsT2(students, mu = mu0, test = "f")
+```
+
+
+## 7.5
+***
+
+_**Height and shoe size differences between genders**_
+
+To test the difference in means of height and shoe size between gender, hotellings two sided test will be performed. These three assumptions need to be met for the hotelling test to be suitable: both samples (one sample female, the other male), have underlying multivariate normal distributions, they are independant and have an equal co variance matrix.
+
+For our purposes we assume these assumptions are met but plots of each variable from the male and female samples are included below. Before doing so the shoe sizes need to be standardized, in this case all sizes will be converted to mens and will use the US sizing system. To do so shoe sizes greater than 30 will be converted to US sizing, while the female recordings will then also be converted to mens.
+
+### Create dataframes and standardize measurements
+```{r,message=FALSE,warning=FALSE}
+male = dat[!is.na(dat$height) & !is.na(dat$shoe_size),] %>% filter(recoded_gender == "male") %>%  select (height,shoe_size)
+
+female = dat[!is.na(dat$height) & !is.na(dat$shoe_size),]%>% filter(recoded_gender == "female") %>% select (height,shoe_size)
+```
+Before converting we find the minimum and maximum for each sample (will help see what conversions need to be made) and also locate any values ending in 0.5 in this range:
+```{r}
+size_range = female %>% filter(shoe_size > 35)
+
+c(min(size_range$shoe_size),max(size_range$shoe_size))
+
+size_range %>% filter(shoe_size %% 1 != 0)
+
+size_range = male %>%  filter(shoe_size > 38)
+
+c(min(size_range$shoe_size),max(size_range$shoe_size))
+
+size_range %>% filter(shoe_size %% 1 != 0)
+
+# so start from 39 & remove 30 result and others not in range 39 - 49
+male <- male %>% filter(!(shoe_size > 29 & shoe_size < 39))
+```
+So for the female population we only need to take into account sizes 36 - 38 and for the male population only sizes, 37 - 46, but we will only consider 39 - 46 as the european system does not go lower; these other values will be removed from the sample. Now we convert:
+```{r,message=FALSE,warning=FALSE}
+female$shoe_size[female$shoe_size == 36] <- 5.5
+female$shoe_size[female$shoe_size == 37] <- 6.5
+female$shoe_size[female$shoe_size == 37.5] <- 7
+female$shoe_size[female$shoe_size == 38] <- 7.5
+"Female sizes:"
+female$shoe_size
+
+"Female converted to mens:"
+female$shoe_size <- female$shoe_size + 2
+female$shoe_size
+
+male$shoe_size[male$shoe_size == 40] <- 7
+male$shoe_size[male$shoe_size == 41] <- 8
+male$shoe_size[male$shoe_size == 42] <- 9
+male$shoe_size[male$shoe_size == 42.5] <- 9.5
+male$shoe_size[male$shoe_size == 43] <- 10
+male$shoe_size[male$shoe_size == 44] <- 11
+male$shoe_size[male$shoe_size == 45] <- 12
+male$shoe_size[male$shoe_size == 46] <- 13
+" Male sizes:"
+male$shoe_size
+```
+Now that the shoe sizes are standardised the normality of the variables will be found for completeness however we will continue regardless and acknowledge it as a limitation if not met. Height is not altered as this was taken care of during data cleaning.
+
+### Checking normality:
+Barplot and qqplot of height in male sample:
+```{r}
+a =ggplot(male, aes(x = height)) + geom_bar() + labs(title = "Height in the male sample", x = "Height")
+b=ggplot(male,aes(sample = height)) + geom_qq() + geom_qq_line() + labs(title = "Height in the male sample", y = "height", x="")
+plot_grid(a,b)
+```
+
+These provide a strong indication of a normal distribution for height in the male sample. Now we do the same for shoe size:
+```{r}
+a=ggplot(male, aes(x = shoe_size)) + geom_bar() +labs(title = "Shoe size in the male sample", x = "Shoe size (US MENS)")
+b=ggplot(male,aes(sample = shoe_size)) + geom_qq() + geom_qq_line() +labs(title = "Shoe size in the male sample",y = "Shoe size (US MENS)", x="")
+plot_grid(a,b)
+```
+
+Indicates that it does not follow a normal distribution, so our assumption cannot be made but we will procede with this as a limitation.
+
+Now to do the same for the female sample:
+```{r}
+a = ggplot(female, aes(x = height)) + geom_bar() + labs(title = "Height in the female sample", x = "Height")
+b = ggplot(female,aes(sample = height)) + geom_qq() + geom_qq_line() + labs(title = "Height in the female sample", y = "Height", x="")
+plot_grid(a,b)
+```
+```{r}
+a=ggplot(female, aes(x = shoe_size)) + geom_bar() +labs(title = "Shoe size in the female sample", x = "Shoe size (US MENS)")
+b=ggplot(female,aes(sample = shoe_size)) + geom_qq() + geom_qq_line() +labs(title = "Shoe size in the female sample",y = "shoe size (US MENS)", x="")
+plot_grid(a,b)
+```
+
+
+Like the male sample shoe size does not follow a normal distribution but height doesn't seem to follow a normal distribution either, but as stated before we omit this assumption and acknowledge it as a limitation for our test.
+
+
+### Hotelling T2 test and conclusion
+
+
+The hypothesis is as follows:
+
+$$
+H_0: u_1 = u_2\\
+H_1: u_1 > u_2 \\
+\alpha = 0.05
+$$
+where $u_1$ is the multivariate mean of shoe size and height for the male sample and $u_2$ is for the female sample.
+
+Now to do the HotellingT2 test:
+```{r,message=FALSE,warning=FALSE}
+HotellingsT2(male,female,test = "f")
+```
+
+The p value is < 2.2e-16 < $\alpha$ which indicates that we reject the null hypothesis and that there is a significant difference between shoe size and height between genders.
+
+***
+# Reference
+***
+
+ - [1] https://www.netquest.com/blog/en/random-non-random-sampling?fbclid=IwAR2MdoDAQRskeWsHvuCyO63ucy0LQglC-2jE5yARbdzedNFdwTisYLwG5iQ 
+
+ - [2] Abs.gov.au. (2019). 4364.0.55.004 - Australian Health Survey: Physical Activity, 2011-12. [online] Available at: https://www.abs.gov.au/ausstats/abs@.nsf/Lookup/4364.0.55.004Chapter4002011-12 [Accessed 20 Sep. 2019].
+
+
+ - [3] Sydney.edu.au. (2019). [online] Available at: http://sydney.edu.au/policies/showdoc.aspx?recnum=PDOC2015/401&RendNum=0 [Accessed 20 Sep. 2019].
+
+
+ - [4] Horin, A. (2019). Balance the key for uni students who work. [online] The Sydney Morning Herald. Available at: https://www.smh.com.au/education/balance-the-key-for-uni-students-who-work-20110111-19ms9.html [Accessed 20 Sep. 2019]. - _NB. 8 hours per week has been assumed according to the context of the article._
+ 
+ - Stack Overflow. 2019. dataframe - Replacing values from a column using a condition in R - Stack Overflow. [ONLINE] Available at: https://stackoverflow.com/questions/13871614/replacing-values-from-a-column-using-a-condition-in-r. [Accessed 22 September 2019].
+
+ - Shoe Size Converter Charts. 2019. Shoe Size Converter Charts. [ONLINE] Available at: https://www.shoesizingcharts.com/. [Accessed 22 September 2019].
+
+ - Packages: See at the top of the report
+

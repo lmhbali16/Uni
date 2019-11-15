@@ -1,0 +1,259 @@
+---
+title: "DATA1001 Project 1"
+author: "Matt Allan, ChenYue Wang, Hoang Minh Le"
+date: "3 April 2018"
+output: html_document
+---
+
+#DOMAIN KNOWLEDGE:
+
+###In this dataset we are looking at re-offending rates in NSW from the years of 2000 to 2015, specifically re-offending within 12months of the initial offence; either being finalised in court (where a penalty other than prison applies) or from when the person left custody. This includes re-offending rates against age groups as well as re-offending rates of those whose first offence was recorded and whether their 2nd offence was of the same category as the 1st.
+
+###Looking at crime trends from 1990 – 2015(BOCSAR, long term trends NSW) it can be seen that crime in NSW has gone down (per 100, 000 people) with Murder (2.0 to 0.9 (per 100, 000)), Robbery (95.6 to 31.3 (per 100,000)) and motor vehicle theft (935.1 to 170.2 (per 100,000)) all dramatically decreasing over the 25 year period. However, some offences are up, incidents of assault (511.0 to 810.1 (per100, 000)) and sexual offences (71.4 to 170.5 (per100, 000)) have increased, but it is noted that this may not be an actual increase in offences, rather an increase in education and knowledge for reporting of these offences, especially in the realm of domestic violence (DV).
+ 
+
+
+#DATA SOURCE: Australian Bureau of Crime statistics and research (BOCSAR)
+
+###Established in 1969 the BOSCAR is a government agency focused on statistical research within the Department of Justice.  BOSCAR are responsible for producing NSW Annual crime statistics as well as looking into data such as re-offending rates, prison statistics and youth justice systems. They are a highly valuable and reliable group as the data they report is used by police to target high areas of crime as well as understanding whether the current programs in place are adequate (resource: http://www.bocsar.nsw.gov.au/Pages/bocsar_datasets/Datasets-.aspx).
+
+#STAKEHOLDERS:
+
+###The stakeholders for the dataset are the NSW Government, NSW Prisons and correctional services, NSW Police, and these stakeholders deem the information as high importance as it is capable for usage in budgeting by the government for NSW Prisons as well as NSW police and its departments. NSW Police use the data to decide what areas to look at as well as working with NSW Prisons to decide on possible rehabilitation programs that may be put in place. 
+
+
+
+
+##People with proven finalised court appearances, completed Youth Justice Conferences or cautions who received a penalty other than prison
+```{r, echo=FALSE}
+#table1 is: People with proven finalised court appearances, completed Youth Justice Conferences or cautions who received a penalty other than prison
+library(readxl)
+table1 = read_excel("data/received.xlsx")
+library(knitr)
+kable(table1[1: 16, ])
+```
+
+##People released from prison in ROD custody data between 2000 and 2015
+```{r, echo=FALSE}
+#table2 is: People released from prison in ROD custody data between 2000 and 2015
+library(readxl)
+table2 = read_excel("data/released.xlsx")
+library(knitr)
+kable(table2[1: 16, ])
+```
+
+##Principal Offence at reference
+```{r, echo=FALSE}
+#table34 is: Principal Offence at reference
+library(readxl)
+table34 = read_excel("data/table34.xlsx")
+library(knitr)
+kable(table34[1: 8, ])
+
+
+```
+
+#Question 1: What offences (number of offences) have changed the most from 2008-2015 and why?
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(readxl)
+library(ggplot2)
+library(readxl)
+table34 = read_excel("data/table34.xlsx")
+a = table34$`Homicide and related offences: Offenders`
+b=table34$`Acts intended to cause injury - DV: Offenders`
+c=table34$`Acts intended to cause injury - non-DV: 0ffenders`
+d=table34$`Sexual assault and related offences: 0ffenders`
+e=table34$`Dangerous or negligent acts endangering persons: 0ffenders`
+f=table34$`Abduction and related offences:0ffenders`
+g=table34$`Robbery, extortion and related offences: 0ffenders`
+h=table34$`Unlawful entry with intent/burglary, break and enter: 0ffenders`
+i=table34$`Theft and related offences: 0ffenders`
+j=table34$`Deception and related offences: 0ffenders`
+k=table34$`Illicit drug offences: 0ffenders`
+l=table34$`Weapons and explosives offences: 0ffenders`
+m=table34$`Property damage and environmental pollution: 0ffenders`
+n=table34$`Public order offences: 0ffenders`
+o=table34$`Road traffic and motor vehicle regulatory offences: 0ffenders`
+p=table34$`Offences against justice procedures, government security and government operations: 0ffenders`
+q=table34$`Miscellaneous offences: 0ffenders`
+Year=table34$YEAR
+Number="Number of people"
+df <- data.frame(x = Year, y1=a, y2=b,y3=c,y4=d, y5=e,y6=f,y7=g,y8=h,y9=i,y10=j,y11=k,y12=l,y13=m,y14=n,y15=o,y16=p,y17=q)
+
+ggplot(table34, aes(x=Year, color=Offences),axisLineWidth=1.5)+ggtitle("Comparison of different  offences")+xlab("Year")+ylab("Number of people")+geom_line(aes(y=a, color="Homicide and related offences: Offenders"))+geom_line(aes(y=b, color="Acts intended to cause injury - DV: Offenders"))+geom_line(aes(y=c, color="Acts intended to cause injury - non-DV: 0ffenders"))+geom_line(aes(y=d,color="Sexual assault and related offences: 0ffenders"))+geom_line(aes(y=e,color="Dangerous or negligent acts endangering persons: 0ffenders"))+geom_line(aes(y=f,color="Abduction and related offences:0ffenders"))+geom_line(aes(y=g,color="Robbery, extortion and related offences: 0ffenders"))+geom_line(aes(y=h,color="Unlawful entry with intent/burglary, break and enter: 0ffenders"))+geom_line(aes(y=i,color="Theft and related offences: 0ffenders"))+geom_line(aes(y=j,color="Deception and related offences: 0ffenders"))+geom_line(aes(y=k,color="Illicit drug offences: 0ffenders"))+geom_line(aes(y=l,color="Weapons and explosives offences: 0ffenders"))+geom_line(aes(y=m,color="Property damage and environmental pollution: 0ffenders"))+geom_line(aes(y=n, color="Public order offences: 0ffenders"))+geom_line(aes(y=p,color="Offences against government operations: 0ffenders"))+geom_line(aes(y=q,color="Miscellaneous offences: 0ffenders"))
+
+ggplot(table34, aes(x=Year, color=Offences),axisLineWidth=1.5)+ggtitle("Comparison of different  offences")+xlab("Year")+ylab("Number of people")+geom_line(aes(y=b, color="Acts intended to cause injury - DV: Offenders"))+geom_line(aes(y=c, color="Acts intended to cause injury - non-DV: 0ffenders"))+geom_line(aes(y=k,color="Illicit drug offences: 0ffenders"))
+
+spread1=max(table34$`Homicide and related offences: Offenders`)- min(table34$`Homicide and related offences: Offenders`)
+
+spread2=max(table34$`Acts intended to cause injury - DV: Offenders`)-min(table34$`Acts intended to cause injury - DV: Offenders`)
+
+spread3=max(table34$`Acts intended to cause injury - non-DV: 0ffenders`)-min(table34$`Acts intended to cause injury - non-DV: 0ffenders`)
+
+spread4=max(table34$`Sexual assault and related offences: 0ffenders`)-min(table34$`Sexual assault and related offences: 0ffenders`)
+
+spread5=max(table34$`Dangerous or negligent acts endangering persons: 0ffenders`)-min(table34$`Dangerous or negligent acts endangering persons: 0ffenders`)
+
+spread6=max(table34$`Abduction and related offences:0ffenders`)-min(table34$`Abduction and related offences:0ffenders`)
+
+spread7=max(table34$`Robbery, extortion and related offences: 0ffenders`)-min(table34$`Robbery, extortion and related offences: 0ffenders`)
+
+spread8= max(table34$`Unlawful entry with intent/burglary, break and enter: 0ffenders`)-min(table34$`Unlawful entry with intent/burglary, break and enter: 0ffenders`)
+
+spread9=max(table34$`Theft and related offences: 0ffenders`)-min(table34$`Theft and related offences: 0ffenders`)
+
+spread10=max(table34$`Deception and related offences: 0ffenders`)-min(table34$`Deception and related offences: 0ffenders`)
+
+spread11=max(table34$`Illicit drug offences: 0ffenders`)-min(table34$`Illicit drug offences: 0ffenders`)
+
+spread12=max(table34$`Weapons and explosives offences: 0ffenders`)-min(table34$`Weapons and explosives offences: 0ffenders`)
+
+spread13=max(table34$`Property damage and environmental pollution: 0ffenders`)-min(table34$`Property damage and environmental pollution: 0ffenders`)
+
+spread14=max(table34$`Public order offences: 0ffenders`)-min(table34$`Public order offences: 0ffenders`)
+
+spread15=max(table34$`Road traffic and motor vehicle regulatory offences: 0ffenders`)-min(table34$`Road traffic and motor vehicle regulatory offences: 0ffenders`)
+spread16=max(table34$`Miscellaneous offences: 0ffenders`)-min(table34$`Miscellaneous offences: 0ffenders`)
+
+spread= c("Homicide and related offences: Offenders"=spread1,"Acts intended to cause injury - DV: Offenders"=spread2,"Acts intended to cause injury - non-DV: 0ffenders"=spread3,"Sexual assault and related offences: 0ffenders"=spread4,"Dangerous or negligent acts endangering persons: 0ffenders"=spread5,"Abduction and related offences:0ffenders"=spread6,"Robbery, extortion and related offences: 0ffenders"=spread7,"Unlawful entry with intent/burglary, break and enter: 0ffenders"=spread8,"Theft and related offences: 0ffenders`)-min(table34$`Theft and related offences: 0ffenders"=spread9,"Deception and related offences: 0ffenders"=spread10,"Illicit drug offences: 0ffenders"=spread11,"Weapons and explosives offences: 0ffenders"=spread12,"Property damage and environmental pollution: 0ffenders"=spread13,"Public order offences: 0ffenders"=spread14,"Miscellaneous offences: 0ffenders"=spread16)
+```
+
+##Road traffic and motor vehicle regulatory offences
+
+####Since this violation is the highest offence commited, we separated this line graph from the other offences, so we can have a better picture about the chnages in graphs. Also, due to being a common type of offence, we rather examine the less ordinary cases.
+```{r, echo=FALSE}
+library(ggplot2)
+ggplot(table34,aes(x=Year,y=Number))+geom_line(aes(y=o))+xlab("Year")+ylab("Number of people")+ggtitle("Number of Offenders Related to Road Traffic/Vehicle Regulatory Offences")
+
+
+```
+
+
+##The spread of the offences in decreasing order - Why are the top 3 offences changed that much?
+```{r, echo=FALSE}
+sort(spread, decreasing = TRUE)
+```
+
+##Acts intended to cause injury - DV: Offenders (maximum and minimum)
+```{r,echo=FALSE}
+max(table34$`Acts intended to cause injury - DV: Offenders`)
+min(table34$`Acts intended to cause injury - DV: Offenders`)
+```
+
+##Acts intended to cause injury - non-DV: 0ffenders (maximum and minimum)
+```{r,echo=FALSE}
+max(table34$`Acts intended to cause injury - non-DV: 0ffenders`)
+min(table34$`Acts intended to cause injury - non-DV: 0ffenders`)
+```
+
+##Illicit drug offences: 0ffenders (maximum and minimum)
+```{r,echo=FALSE}
+max(table34$`Illicit drug offences: 0ffenders`)
+min(table34$`Illicit drug offences: 0ffenders`)
+```
+
+
+###Conclusion: Based on the graphical and numerical summaries we can see that from  2008 to 2015 there has been a dramatic increase in Illicit drug, and Acts intending to cause Injury(Domestic Violence) related offences whilst there has been a large decrease in Traffic and Acts intending to cause injury(Non domestic violence).
+
+###The one of the reasons behind the increase of illicit drug offences can be found in the history of drug. The Australian Crime Commission's illicit drug data reported that around 2012 the number of drug types were the highest in the decade. Various new drugs were registered, such as different kind of GHB, synthetic drugs and ketamine.
+
+###Even though the Domestic Violence Intervention Court Model commenced in 2005 which aim was to respond to the criminal cases related to domestic violence in a more effective way, domestic violence increased significantly. Some sources claim that most of the time women are the victims of DV as around one in six women experienced domestic violence, while “only” one was victim in seventeen men.
+
+###The reason behind violence is very complex, still NSW was able to reduce the number of offenders who intended to cause injury. As you can see on the graph, offence related to “acts intended to cause injury – non DV” decreased drastically.  the reason behind it can be economical, social or psychological changes. One of the arguments is the different laws related to alcohol, such as the Violent venues scheme which seek to manage alcohol related violence. since 2008. Another similar law is the Sydney lockout law: it was introduced in 2014 and requires every venue for closure at 1.30 am in the entertainment industry.
+
+#Question 2: In the table: Adults in Local or Higher court appearances, what is the trend for number of re-offenders in the 18 to 24 age bracket, what reasons might there be for this trend?
+```{r,echo=FALSE}
+p1 = ggplot(table1,aes(Year,`No.18 to 24`,color="Reoffenders receiving a pentalty other than prison (age from 18 to 24)"))
+p1 + geom_point()
+summary(table1$`No.18 to 24`)
+```
+
+###Answer: The trend for 18-24yr olds receiving a penalty other than prison is decreasing, this is most likely due to factors of education, youth employment, and homelessness. In the importance of sustained investment in education article, from figure 10 we can see that numbers of fundings has increased and is quite possibly a confounding reason for this decrease
+
+
+#Question 3: In the table: Adults in Local or Higher court appearances, what is the overall trend for the numbers of the age group over 45 from 2000 to 2015, and why this happen?
+```{r pressure, echo=FALSE}
+library(ggplot2)
+library(readxl)
+
+p2 = ggplot(table1,aes(Year,`No.45 and over`,color="Reoffenders receiving a pentalty other than prison (age = 45 and over)"))
+p2 + geom_point()
+summary(table1$`No.45 and over`)
+```
+###Conclusion:The increasing trend for over 45’s receiving a penalty other than prison shows an increasing trend in Lower value crimes. Unemployment rate might the factors that influence on elderly crimes increasing. From Labour Market information portal, the unemployment rate is increasing from 5.7% to 6.2% between 2000 to 2015.
+
+
+#Question 4: Over the 2008 – 2015 period, the two leading (initial) crimes for reoffending in NSW are theft, as well as weapons and explosives related offences. Why is this?  
+```{r,echo=FALSE}
+max1=max(table34$`Homicide and related offences: Re-offended with any offence type  (%)`)
+max2=max(table34$`Acts intended to cause injury - DV: Re-offended with any offence type (%)`)
+max3=max(table34$`Acts intended to cause injury - non-DV: Re-offended with any offence type (%)`)
+max4=max(table34$`Sexual assault and related offences: Re-offended with any offence type (%)`)
+max5=max(table34$`Dangerous or negligent acts endangering persons: Re-offended with any offence type (%)`)
+max6=max(table34$`Abduction and related offences: Re-offended with any offence type (%)`)
+max7=max(table34$`Robbery, extortion and related offences: Re-offended with any offence type (%)`)
+max8=max(table34$`Unlawful entry with intent/burglary, break and enter: Re-offended with any offence type (%)`)
+max9=max(table34$`Theft and related offences: Re-offended with any offence type (%)`)
+max10=max(table34$`Deception and related offences: Re-offended with any offence type (%)`)
+max11=max(table34$`Illicit drug offences: Re-offended with any offence type (%)`)
+max12=max(table34$`Weapons and explosives offences: Re-offended with any offence type (%)`)
+max13=max(table34$`Property damage and environmental pollution: Re-offended with any offence type (%)`)
+max14=max(table34$`Public order offences: Re-offended with any offence type (%)`)
+max15=max(table34$`Road traffic and motor vehicle regulatory offences: Re-offended with any offence type (%)`)
+max16=max(table34$`Offences against justice procedures, government security and government operations: Re-offended with any offence type (%)`)
+max17=max(table34$`Miscellaneous offences: Re-offended with any offence type (%)`)
+max=c("Homicide and related offences: Re-offended with any offence type  (%)"=max1,"Acts intended to cause injury - DV: Re-offended with any offence type (%)"=max2,"Acts intended to cause injury - non-DV: Re-offended with any offence type (%)"=max3,"Sexual assault and related offences: Re-offended with any offence type (%)"=max4,"Dangerous or negligent acts endangering persons: Re-offended with any offence type (%)"=max5,"Abduction and related offences: Re-offended with any offence type (%)"=max6,"Robbery, extortion and related offences: Re-offended with any offence type (%)"=max7,"Unlawful entry with intent/burglary, break and enter: Re-offended with any offence type (%)"=max8,"Theft and related offences: Re-offended with any offence type (%)"=max9,"Deception and related offences: Re-offended with any offence type (%)"=max10,"Illicit drug offences: Re-offended with any offence type (%)"=max11,"Weapons and explosives offences: Re-offended with any offence type (%)"=max12,"Property damage and environmental pollution: Re-offended with any offence type (%)"=max13,"Public order offences: Re-offended with any offence type (%)"=max14,"Road traffic and motor vehicle regulatory offences: Re-offended with any offence type (%)"=max15,"Offences against justice procedures, government security and government operations: Re-offended with any offence type (%)"=max16,"Miscellaneous offences: Re-offended with any offence type (%)"=max17)
+
+sort(max,decreasing = TRUE)
+```
+
+```{r,echo=FALSE}
+ggplot(table34, aes(x=table34$YEAR,color="Offences"))+geom_line(aes(y=table34$`Theft and related offences: Re-offended with any offence type (%)`, color="Theft and related offences: Re-offended with any offence type (%)"))+geom_line(aes(y=table34$`Weapons and explosives offences: Re-offended with any offence type (%)`,color="Weapons and explosives offences: Re-offended with any offence type (%)"))+xlab("Year")+ylab("Offenders who re-offended with any offence type (%)")
+```
+
+```{r,echo=FALSE}
+
+ggplot(table34, aes(x=table34$YEAR,color="Offences"))+geom_line(aes(y=table34$`Theft and related offences: 0ffenders`, color="Theft and related offences: 0ffenders"))+geom_line(aes(y=table34$`Weapons and explosives offences: 0ffenders`,color="Weapons and explosives offences: 0ffenders"))+xlab("Year")+ylab("Number of offenders")
+```
+
+
+###Conclusion: From looking at the data it is evident that the Theft and Weapons/ explosives related offences have the highest rates of re-offending in NSW. This could be due to poverty and/or gang related offences. NSW is still home to 7 major outlaw bikie Gangs including the Bandidos, Comancheros, rebels and the hells angels that participate in activities such as theft and weapons dealing. However, with multiple crackdowns across the state many members are gaining an extensive criminal record including but not limited to the above offences.
+
+
+###Reference:
+
+#####domain knowledge:
+#####http://www.bocsar.nsw.gov.au/Pages/bocsar_datasets/Datasets-.aspx
+#####http://www.bocsar.nsw.gov.au/Pages/bocsar_crime_stats/bocsar_crime_stats.aspx
+#####http://www.bocsar.nsw.gov.au/Pages/bocsar_media_releases/2010/bocsar_mr_cjb143.aspx
+
+#####for question 1:
+#####https://en.wikipedia.org/wiki/Illicit_drug_use_in_Australia#21st_century
+#####https://yourroom.health.nsw.gov.au/a-z-of-drugs/Pages/a-z-of-drugs.aspx
+#####http://www.bocsar.nsw.gov.au/Pages/bocsar_media_releases/2008/bocsar_mr_r58.aspx
+#####https://www.dss.gov.au/sites/default/files/documents/05_2012/domestic_violence_laws_in_australia_-_june_2009.pdf
+#####http://www.abc.net.au/news/2016-04-06/fact-file-domestic-violence-statistics/7147938
+#####https://www.sbs.com.au/news/why-are-rates-of-domestic-violence-in-australia-still-so-high
+#####https://www.liquorandgaming.nsw.gov.au/Pages/liquor/law-and-policy/violent-venues.aspx
+#####https://www.hospitalitymagazine.com.au/91-percent-decrease-in-violent-incidences-in-nsw/
+#####https://en.wikipedia.org/wiki/Sydney_lockout_laws#Legislation
+
+
+#####for question 2-3:
+#####http://exar.nsw.gov.au/exar/wp-content/uploads/2015/12/The-Importance-of-Sustained-Investment-in-Education.pdf
+#####http://lmip.gov.au/default.aspx?LMIP/LFR_SAFOUR/NSW_LFR_LM_UnemploymentRateTimeSeries
+
+#####for question 4:
+#####http://www.bocsar.nsw.gov.au/Pages/bocsar_news/Re-offending-in-NSW.aspx
+#####http://www.abs.gov.au/ausstats/abs@.nsf/0/926207B81B41A805CA25697E00184BCE?opendocument
+#####https://www.dailytelegraph.com.au/news/nsw/the-bikie-gangs-of-new-south-wales/news-story/2f6ee5059b7696e7239d177ee3f8548e
+
+####Task distribution
+######-Question 1: Hoang Minh Le
+######-Question 2-3: ChenYue Wang
+######-Question 4: Matt Allan
+######-Formatting: Hoang Minh Le
+######-Language: Matt Allan
+######-Coding: ChenYue Wang and Hoang Minh Le

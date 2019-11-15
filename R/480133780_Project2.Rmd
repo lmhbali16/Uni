@@ -1,0 +1,322 @@
+---
+title: "Project 2"
+author: "Matt Allan, ChenYue Wang, Hoang Minh Le"
+date: "30 April 2018"
+output: html_document
+---
+
+
+##Link to the survey: https://goo.gl/forms/LV08R8Tc2pw9sk0A3
+
+##Purpose: 
+###The purpose of this survey was to identify current trends of "Healthy Habits" within full time university students. This survey viewed items such as: Living Status, Working Status, Sleep patterns, Exercise, Propensity to purchase/eat fast  food, Money spent on alcohol, and the food choices made by participants.
+
+
+
+##Stakeholders: 
+###Possible Stakeholders to this kind of data range from Government/Private health agencies, on campus businesses, dietitians, and the students themselves.  Government  agencies such as 'Eat for Health' and Medicare as well as and Private health insurance companies including Medibank, Bupa, and Nib Would find this information(and extensions thereof) as extremely useful. This is because insights into the habits of university students may serve as an indication for whether or not strategies to make younger generations healthier are actually working. It may also be used to decide on future funding decisions for these companies.   On campus food outlets may see this data as an opportunity to change catering strategies to more(or less) healthy options for meals served, as well as an indication of liquor prices and profitability(or lack thereof) from selling alcohol.   As for students, they will find the data useful for finding relations between their own habits and the habits of their peers. 
+
+##Domain Knowledge: 
+###The habits you make here will influence you for the rest of your life. Full time university can be challenging for students, it is a time where for most, young adults are given a substantial workload, and must learn to balance that with the ever increasing independence that is brought upon them. This may include the acquisition of part-time work, as well as the possibility that students are now living away from their parental household. However, all students, regardless of their working or living status are now at the point where responsibility for their lives falls on them, some major requirements for a healthy lifestyle(mental and physical) include; enough sleep, exercise, and eating healthily whilst limiting consumption  of fast food and alcohol.  For this study, an attempt is made to quantify these factors in a way that enables us to look into the habits of university students enlisted in a full time. 
+
+
+
+```{r, echo=FALSE}
+library(readxl)
+table=read_excel("data/habits.xlsx")
+library(knitr)
+kable(table[1: 37, ])
+
+table$Gender = as.factor(table$Gender)
+table$Gender <- factor(table$Gender, levels=c('Male', 'Female', 'Prefer not to say'))
+table$`Working status` = as.factor(table$`Working status`)
+table$`Working status` <- factor(table$`Working status`, levels = c("Not currently working", "Part-time (less than 20 hours)", "Full time (35+ hours)"))
+table$`Living status` = as.factor(table$`Living status`)
+table$`Living status` <- factor(table$`Living status`,levels = c("At home (with parents)", "Share house (not student housing)", "Living independently", "Student housing"))
+table$`Healthy eating` = as.factor(table$`Healthy eating`)
+table$`Healthy eating` <- factor(table$`Healthy eating`, levels=c("Extremely healthy", "Very healthy", "Somewhat healthy", "Not so healthy", "Not at all healthy"))
+table$`Spending on alcohol (monthly)` = as.factor(table$`Spending on alcohol (monthly)`)
+table$`Spending on alcohol (monthly)` <- factor(table$`Spending on alcohol (monthly)`, levels = c("$0 - $20", "$20 - $80", "$80 - $150","$150 - $300", "$300 - $500", "$500+"))
+table$`Spending on fast food (monthly)`= as.factor(table$`Spending on fast food (monthly)`)
+table$`Spending on fast food (monthly)` <- factor(table$`Spending on fast food (monthly)`, levels = c("Rarely/never", "Occasionally", "Sometimes", "Often", "Very often"))
+table$`Daily serving` = as.factor(table$`Daily serving`)
+table$`Daily serving` <- factor(table$`Daily serving`, levels = c("Yes, I get all of the recommended daily intakes for my category.", "I get most of the recommended daily intakes for my category.", "I get approximately half of the recommended daily intakes for my category.", "I get only some of the recommended daily intake for my category."))
+
+{echo= TRUE}
+str(table)
+
+summary(table)
+```
+
+###Journal: 
+####https://www.eatforhealth.gov.au/sites/default/files/content/n55_australian_dietary_guidelines.pdf
+
+###Journal Summary: 
+####The Australian Dietary Guidelines(Eat For Health) was created by the Australian Government in an effort to give the public easy access to nutrition information including food groups, dietary requirements and amounts with the aim to promote health and wellbeing whilst limiting diet and chronic conditions in Australia. The most recent Journal has been compiled from 55,000 scientific journals across the world and is designed to comprehensively show Australians suitable guidelines for healthy eating. 
+
+####The following table shows the Daily recommended intake servings of the 5 major food groups. by age and gender. It was used in the survey to analyse how well the respondents ate in conjunction with it.
+
+
+```{r,echo= F, out.width = "150%"}
+library(png)
+img1_path <- "/Users/lmh16/Desktop/pic.png"
+img1 <- readPNG(img1_path, native = TRUE, info = TRUE)
+
+include_graphics(img1_path)
+```
+
+
+
+##Question 1: Relationship Between the Participants' Opinion and Fact About Their Own Healthy Eating Habit. Are They Aware About Their Healthy Eating Habit?
+
+
+```{r, echo=FALSE}
+library(ggplot2)
+
+
+
+table_healthy2 = table$`Daily serving`
+levels(table_healthy2)[levels(table_healthy2) == "Yes, I get all of the recommended daily intakes for my category."] <- "All"
+levels(table_healthy2)[levels(table_healthy2) == "I get most of the recommended daily intakes for my category."] <- "Most"
+levels(table_healthy2)[levels(table_healthy2) == "I get approximately half of the recommended daily intakes for my category."] <-"Half"
+levels(table_healthy2)[levels(table_healthy2) == "I get only some of the recommended daily intake for my category."] <- "Some"
+
+fact = table$`Daily serving`
+Opinion = table$`Healthy eating`
+fast_food = table$`Spending on fast food (monthly)`
+participants = table$Participants
+Gender = table$Gender
+p = ggplot(table, aes(table_healthy2, participants)) + ggtitle("Eating Habit of University Students") + ylab("Participants") + xlab("(Daily servings as per the Australian Dietary guidelines)") 
+p2 = ggplot(table, aes(table_healthy2)) + ylab("Number of people") + xlab("(Daily servings as per the Australian Dietary guidelines)") + ggtitle("Eating Habit of University Students (Barplot)")
+
+p + geom_point(aes(col = Gender, shape = Opinion))
+p2 + geom_bar(aes(fill = Opinion))
+
+
+get_all = sum(table(participants[table$`Daily serving` == "Yes, I get all of the recommended daily intakes for my category."]))
+get_all2 = sum(table(participants[table$`Daily serving` == "I get most of the recommended daily intakes for my category."]))
+get_all3 = sum(table(participants[table$`Daily serving` == "I get approximately half of the recommended daily intakes for my category."]))
+get_all4 = sum(table(participants[table$`Daily serving` == "I get only some of the recommended daily intake for my category."]))
+```
+
+```{r ,echo = T}
+#People from the daily serving question
+get_all  # get all
+get_all2 #get most
+get_all3 #get half
+get_all4 #get some
+```
+
+```{r, echo = F}
+correct = sum(table(participants[fact == "Yes, I get all of the recommended daily intakes for my category." & table$`Healthy eating` == "Extremely healthy"]))
+correct2 =sum(table(participants[fact == "I get most of the recommended daily intakes for my category." & table$`Healthy eating` == "Very healthy"]))
+correct3 = sum(table(participants[fact == "I get approximately half of the recommended daily intakes for my category." & table$`Healthy eating` == "Somewhat healthy"]))
+correct4 =sum(table(participants[fact == "I get only some of the recommended daily intake for my category." & table$`Healthy eating` == "Not so healthy"])) + sum(table(participants[fact == "I get only some of the recommended daily intake for my category." & table$`Healthy eating` == "Not at all healthy"]))
+
+
+correct_per = correct / get_all * 100
+correct2_per = correct2 / get_all2 * 100
+correct3_per = correct3 / get_all3 * 100
+correct4_per = correct4 / get_all4 * 100
+notcorrect_per = 100 - correct_per
+notcorrect_per2 = 100 - correct2_per
+notcorrect_per3 = 100 - correct3_per
+notcorrect_per4 = 100 - correct4_per
+
+
+male_healthy_per = sum(table(participants[fact == "Yes, I get all of the recommended daily intakes for my category." & table$Gender == "Male"])) / get_all * 100
+male_healthy_per2 = sum(table(participants[fact == "I get most of the recommended daily intakes for my category." & table$Gender == "Male"])) / get_all2 * 100
+male_healthy_per3 = sum(table(participants[fact == "I get approximately half of the recommended daily intakes for my category." & table$Gender == "Male"])) / get_all3 * 100
+male_healthy_per4 = sum(table(participants[fact == "I get only some of the recommended daily intake for my category." & table$Gender == "Male"])) / get_all4 * 100
+
+female_healthy_per = sum(table(participants[fact == "Yes, I get all of the recommended daily intakes for my category." & table$Gender == "Female"])) / get_all * 100
+female_healthy_per2 = sum(table(participants[fact == "I get most of the recommended daily intakes for my category." & table$Gender == "Female"])) / get_all2 * 100
+female_healthy_per3 = sum(table(participants[fact == "I get approximately half of the recommended daily intakes for my category." & table$Gender == "Female"])) / get_all3 * 100
+female_healthy_per4 = sum(table(participants[fact == "I get only some of the recommended daily intake for my category." & table$Gender == "Female"])) / get_all4 * 100
+```
+
+```{r, echo = T}
+#Percentages of people who guess correctly whether they eat healthily
+
+correct_per  #get all
+correct2_per #get most
+correct3_per #get half
+correct4_per #get some
+
+#Percentages of people who guess incorrectly whether they eat healthily
+
+notcorrect_per  #get all
+notcorrect_per2 #get most
+notcorrect_per3 #get half
+notcorrect_per4 #get some
+
+#Percentages of male from each category
+
+male_healthy_per  #get all
+male_healthy_per2 #get most
+male_healthy_per3 #get half
+male_healthy_per4 #get some
+
+#Percentages of female from each category
+
+female_healthy_per  #get all
+female_healthy_per2 #get most
+female_healthy_per3 #get half
+female_healthy_per4 #get some
+
+```
+
+###A More Readable Version of the Numerical Summary
+
+|                 | All | Most | Half | Some |
+|----------------:|:---:|:----:|:----:|:----:|
+|Number           |9    | 17   |9     |2     |
+| In Agreement (%)|33.33|23.53 |77.76 |50    |
+|Dissonance (%)   |66.67|76.47 |22.22 |50    |
+|Male (%)         |66.67|47.06 |55.56 |50    |
+| Female (%)      |33.33|52.94 |44.44 |50    |
+
+###Conclusion: Based on our sample, we can assume that people who have an extremely healthy eating habit are not well-aware of it or not satisfied with it. However, those who have a relatively bad eating habit are quite aware of it. Also, according to the survey, gender does not affect one's healthy lifestyle.
+
+##Question 2: Does working status of a Uni Student affect their eating/drinking habits?
+```{r setup, echo= F, include= T}
+library(readxl)
+data = read_excel("data/habits.xlsx")
+                  
+###Naming
+Age = data$Age
+Sleep = data$`Sleeping hr/night`
+`Work Status` = data$`Working status`
+Live = data$`Living status`
+Booze = data$`Spending on alcohol (monthly)`
+Fast = data$`Spending on fast food (monthly)`
+Exercise = data$`Excercise (day/week)`
+Daily = data$`Daily serving`
+
+#Question No:(YOU CHOOSE)
+##Does working status of a Uni Student affect their eating/drinking habits?
+library(ggplot2)
+#ordering of variables
+Booze <- factor(Booze, levels = c("$0 - $20", "$20 - $80", "$80 - $150", "$150 - $300", "$300 - $500")) 
+Fast <- factor(Fast,levels = c("Rarely/never",'Occasionally', 'Sometimes', 'Often'))
+
+#Count Scatter
+g = ggplot(data,aes(x = Fast))
+g + geom_count(aes(y = Booze, colour = `Work Status`)) + labs(title='Expenditure of Alcohol and Fast Food', subtitle= 'Count Scatter: Work status Included.', y='Spending on Alcohol(Monthly)', x='Frequency of Meals had at Fast Food outlets') + theme(axis.text.x = element_text(angle=90, vjust=0.6)) 
+
+#ordering
+Daily <- factor(Daily, levels = c("I get only some of the recommended daily intake for my category.", "I get approximately half of the recommended daily intakes for my category.","I get most of the recommended daily intakes for my category.", "Yes, I get all of the recommended daily intakes for my category."))
+
+#Barplot
+a = ggplot(data,aes(x = Daily))
+a + geom_bar(aes(fill = `Work Status`), position = 'dodge') + theme(axis.text.x = element_text(angle=90, vjust=0.6)) + scale_x_discrete(labels = c('Some','Half','Most', 'All')) + labs(title = 'Daily intake and Work Status of participants', x= 'Recommended daily intake of food servings', y = 'Number of participants' )
+```
+
+
+
+####Looking at Responses from participants
+####Not currently working
+```{r, echo = F}
+
+summary(Daily[`Work Status` ==  "Not currently working"]) 
+```
+
+####Part-time (less than 20 hours)
+
+```{r, echo = F}
+summary(Daily[`Work Status` ==  "Part-time (less than 20 hours)"]) 
+```
+
+
+```{r, include=T, echo= F}
+knitr::opts_chunk$set(echo = F)
+library(ggplot2)
+library(readxl)
+library(plotrix)
+habit = read_xlsx('data/habits.xlsx')
+counts <- table(table$`Working status`,table$`Sleeping hr/night`)
+
+counts2 <- table(table$`Excercise (day/week)`)
+splitted <- split(table,table$`Excercise (day/week)`, drop = FALSE)
+new_habit = splitted[["0"]]
+
+counts3 <- table(new_habit$`Healthy eating`)
+
+counts4 <- table(new_habit$`Spending on fast food (monthly)`)
+
+
+```
+###Conclusion: It can be seen that whilst those who have part time work are more likely to spend it on alcohol and fast food, working status alone not a good representation of the actual healthiness of the individual. This can be seen from the 2nd graph, where those who worked part time actually showed as being more healthy with their food choices. However it should be noted that only respondents who worked were the only ones who said that they only get some of their daily intakes.
+
+
+
+
+##Question 3: Compare the participants Working Status and Sleeping Hours, what is the result of this, and why does it happen?
+```{r, include= T, echo= F}
+barplot(counts,main = 'Sleeping Hours VS Working Status',xlab = "Sleep(hours per night)", ylab = "Number of people", col = c("darkblue","red"),legend = rownames(counts), beside =  TRUE)
+
+w <- habit$`Sleeping hr/night`[table$`Working status` == "Not currently working"]
+
+t <- table$`Sleeping hr/night`[table$`Working status` == "Part-time (less than 20 hours)"]
+m1 = mean(w)
+m2 =  mean(t)
+sd1 = sd(w)
+sd2 = sd(t)
+
+hist(w, main = "Histogram of Sleeping (Not currently working)", xlab ="Sleep(hours per night)", freq = F)
+curve(dnorm(x, mean = m1, sd = sd1), col = "darkblue", lwd = 2, add = T)
+
+hist(t, main = "Histogram of Sleeping (Part-time (less than 20 hours))", xlab ="Sleep(hours per night)", freq = F)
+curve(dnorm(x, mean = m2, sd = sd2), col = "green", lwd = 2, add = T)
+
+```
+
+###Conclusion: Students who responded as not currently working sleep an average of 7 hours per night and  were the highest response from from the survey. Whilst those who worked had an average sleep of  6 hours per night. Only one Student who responded as Working part-time, sleeps 5 hours per night. And again, only one person who responded as Not currently working, sleeps an average of 9 hours per night. This may be because people who work, have less spare time than people who not.
+
+
+##Question 4: For the responses in number of days exercising(per week), which response has the highest frequency? And what this result to healthy eating and spending on Fast Food?
+
+```{r, include= T, echo= F}
+
+barplot(counts2, main = 'The Numbers Of People VS Days Of Exercise', xlab = 'Days Of Exercise (per week)',ylab = 'Numbers Of People',col = 'brown')
+
+barplot(counts3, main = 'Responses to healthy eating on 0 Exercise PW', ylab = 'Numbers Of People',col = 'red')
+
+barplot(counts4, main = 'Responses to spending on fast food on 0 Exercise PW',ylab = 'Numbers Of People',col = 'black')
+
+```
+
+###Conclusion: In the first bar graph, the number of participants who chose 0 days of exercise per week have the highest frequency. The second graph is only of  participants who are a part of the 0 exercise per week group. As we can see, the majority of participants in this group think they are somewhat healthy. The third graph still the same group of participants, however the highest frequency groups are ‘sometimes’ and ‘occasionally’ in response to Fast Food. This shows that whilst people may not exercise, they still believe that they are somewhat healthy, even if they sometimes eat fast food.
+
+
+##Box Model:
+
+####Our data shows a sample of full-time university students from New South Wales.
+
+####Each student had to answered 10 questions or in other words, each "ticket" in the box model has 10 different attributes.
+
+####Each question has different number of possible answers. For example, we gave 3 options for the participants working status. Based on these options, we could evaulate the chances of each answer.
+
+
+####In the following table, we show the possible outcomes for our responses(theoretical chance) as well as the actual highest frequency responses(%)
+
+|        Question                 | Chance (possible responses) | Highest Frequency Response(%) |
+|:-------------------------------:|:---------------------------:|:-----------------------------:|
+|        Gender:                  |            1/2              |          51.3 (Male)          |
+|        Working Status:          |            1/3              |  64.1 (Not currently working) |
+|        Living Status:           |            1/4              | 43.6 (At home(with parents))  |
+|        Excercise/week:          |            1/8              | 35.9 (Not regularly excercise)|
+|        Healthy eating:          |            1/5              | 64.1 (Somewhat healthy)       |
+|        Money on alcohol:        |            1/6              |        59 ($0 - $20)          |
+| Frequency of buying fast food:  |            1/5              |    35.9 (occasionally)        |
+|        Daily Serving:           |            1/4              | 43.6 (Get most of the rec.)   |
+
+
+
+
+
+#####Question 1 done by Hoang Minh Le
+#####Question 2 done by Matt Allan
+#####Question 3-4 done by ChenYue Wang
+#####Grammar done by Matt Allan
+#####Formatting done by Hoang Minh Le

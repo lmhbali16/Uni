@@ -1,0 +1,973 @@
+---
+title: "Module 1 Report"
+author: '480133780'
+date: "8/12/2019"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    
+---
+
+
+
+##Data collection (1)
+
+
+This dataset is provided by CensusAtSchool New Zealand about students from Year 4 to Year 13 in New Zealand. Volunteered Schools completed the survey with students for the benefits of societies within and outside of New Zealand in order to enhance statistical literacy.
+
+The dataset was obtained by CensusAtSchool NZ via survey in 2019. The survey was completed anonymously by volunteered participants to protect privacy, and the result was submitted to an international database for better accessibility and data security.
+
+*This real dataset is a stratified sample from 2019, and contains 20 items from each class year between year 4 and 13. Based on this sample, we analyse interesting demographic and cultural traits of regular students in New Zealand.*
+
+```{r, message=FALSE, warning=FALSE}
+#importing libraries
+
+
+
+library("ggplot2")
+library("ggpubr")
+library("gridExtra")
+library("tidyverse")
+library("knitr")
+library("cowplot")
+library("kableExtra")
+library("DT")
+```
+***
+
+##Cleaning and Processing (2)
+
+*NOTE: For some categorical data values that are missing, we will leave them as N/A, as it would be hard to predict the right value without affecting statistical analysis.*
+
+N/A values possibly appear due to the participants completing the survey incorrectly. They may not payed much attention to the survey, or there could be mistakes made during the data collection by administrators.
+
+###Rename Column Names
+
+First of all we need to load the data. after that, to work with the dataset, we change the column names using *janitor::clean_names()* with *upper_camel* case to have a better read on the column names throughout the working process.
+
+
+
+```{r, message=FALSE, warning=FALSE}
+data = read.csv("data_sample.csv",na.strings = c("",NA))
+
+data = janitor::clean_names(data,case=c("upper_camel"))
+```
+
+
+As we load the data, we must consider missing values. Therefore, whitespaces are replaced by N/A and we will list the number of missing values per column in order to observe whether there is any pattern for those values.
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+
+#blank to NA
+
+na_table <- data.frame(colSums(is.na(data)))
+colnames(na_table) <- "Number of missing values"
+
+datatable(na_table)
+
+```
+
+
+As you can see above, there are columns with random missing values (MCAR), but at the same time, interestingly enough there are columns with same or similar number of missing values next to each others. 
+
+For the last few questions, the reason why there are so many missing values is because - based on the survey - those questions are only for Year 11, 12 and 13 students (Download the survey on the website for confirmation). However, for the social media and phone related questions, they have the same number of missing values without any particular reason.
+
+Let's see what happens if we loop through those columns and find out which row has N/A value at those questions.
+
+```{r,echo=FALSE}
+
+name = colnames(data)[37:55]
+
+for(i in 37:55){
+  print(rownames(data[is.na(data[,i]),]))
+  
+}
+
+
+```
+
+So what we see above is the row numbers that have missing values for social media and phone related questions. These are almost the exact same rows. Now we have a look at that subset by choosing based on N/A values in column *Facebook Account*.
+
+
+```{r}
+
+
+
+kable(as.data.frame(data[is.na(data$FacebookAccount),])) %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "200px")
+
+```
+
+Looking at the subset, we do not see any pattern that could explain the missing values for those people.
+
+They have no answer for video game preference, which means either they forgot to fill out that question with "Don't have one" as the survey asked, or the data import failed.
+
+As for phone and social media related questions, they may not possess phone, which could also lead to the missing values at those questions.
+
+Those people who had N/A values at the social media and phone related questions, we will assume that they do not have any of those, so we replace the N/A values with no. 
+
+```{r}
+
+
+
+for(i in 37:55){
+  col_name = colnames(data)[i]
+  # If first unique value is n/a, we use the second one
+  if(as.character(unique(data[colnames(data)[i]])[1,]) == "n/a" && nrow(data[rownames(data[is.na(data[,i]),]),][i]) > 0){
+    data[rownames(data[is.na(data[,i]),]),][i] <- unique(data[colnames(data)[i]])[2,]
+    
+    
+    
+  }
+  # use the first unique value if it is not n/a. We know that "no" is the first unqique value as it has the value 0
+  else if(as.character(unique(data[colnames(data)[i]])[1,]) != "n/a" && nrow(data[rownames(data[is.na(data[,i]),]),][i]) > 0){
+    data[rownames(data[is.na(data[,i]),]),][i] <- unique(data[colnames(data)[i]])[1,]
+    
+  }
+  
+
+  
+}
+
+```
+
+For the rest of the categorical missing values, we will leave them as N/A as they have various values unlike the social media ones (those have yes/no values only).
+
+###Numerical N/A Values
+
+
+for numerical data, we create a new table that groups the elements based on school year and gender, then evaluate the mean of columns with numerical data type. With this table, we could replace the missing values with those average numbers.
+
+However, it is important to note, that questions at the ends are interval data type, therefore, we do not deal with them.
+
+We also changed the data type of certain columns for avoiding incorrect values (e.g Number of spoken language should be integer instead of numerical and the number of activity on weekend as well).
+ 
+
+```{r, message=FALSE, warning=FALSE}
+names = colnames(data)
+grouped_data <- data %>% group_by(Year, Gender) %>% summarise_all(funs(mean(.,na.rm = TRUE)))
+
+for(i in 1:64){
+  
+  if(!apply(data[names[i]], 2, is.numeric)){
+    next;
+  }
+  
+  if(sum(is.na(data[names[i]]))== 0){
+    next
+  }
+  
+  na_set = data[is.na(data[names[i]]),]
+  
+  for(j in 1:nrow(na_set)){
+    
+    value = grouped_data[grouped_data$Year == as.numeric(na_set[j,]["Year"]) & grouped_data$Gender == as.character(na_set["Gender"][j,]),][i]
+    
+    na_set[j,][i] <- value
+    
+  }
+  
+  data[rownames(na_set),] <- na_set
+  
+  
+  
+  
+}
+
+data$LanguagesSpoken <- as.integer(data$LanguagesSpoken)
+data$Age <- as.integer((data$Age))
+data$PhysicalActivityOnTheWeekend <- as.factor((data$PhysicalActivityOnTheWeekend))
+
+
+```
+
+***
+
+##Demographic Information (3)
+
+Now, we will have a look at some intriguing information about the sample data.
+
+1) Let's have a look at height of students
+
+```{r, warning=FALSE, message= FALSE}
+
+
+stat <- desc_statby(data,measure.var = "Height", grps = "Gender")
+
+stat <- stat[,c("Gender", "mean", "median", "sd")]
+stat <- ggtexttable(stat, rows = NULL, theme = ttheme("lBlue"))
+
+year_height <- ggplot(data, aes(x= data$Year, y = data$Height))+ geom_boxplot(aes(group= Year))+xlab("Year")+ylab("Height")+ggtitle("Boxplot Related to Height-Year")
+
+gender_height <- ggplot(data, aes(x= data$Gender, y = data$Height))+ geom_boxplot()+ylab("Height")+ylab("Gender")+ggtitle("Gender-Height Boxplot")
+
+age_height <- ggplot(data, aes(x= data$Age, y = data$Height))+ geom_boxplot(aes(group= Age))+ylab("Height")+xlab("Age")+ggtitle("Age-Height Boxplot")
+
+ggarrange(year_height,gender_height,age_height, stat)
+
+country_height <- ggplot(data, aes(x= data$Country, y = data$Height))+ geom_boxplot(aes(group= Country))+ theme(axis.text.x  = element_text(angle=90, vjust=0.5)) +coord_flip()
+
+
+
+```
+
+As you can see on some of the plots, sometimes age and gender does not matter when it comes to height. For example, on the boxplot, we can see someone with a height above 190 cm in Year 4 while there are people in Year 11 who are barely above 160cm.
+
+The boxplot and the table shows gender differences in height. Based on the median and mean height of the two gender, we could argue that gender does not matter, however, the range of male's height is wider. 
+
+On the plot, related to country-height, we can clearly say that Australia as outsanding compared to the other nations. The range of heights is the largest and the median value is also one of the largest. It could be due to the diversity of the country, but then you could argue that The US should also have similar tendencies.
+
+```{r}
+country_height+ylab("Height")+xlab("Countries")+ggtitle("Country-Height Related Boxplot")
+```
+
+It is also important to note that there are missing values (e.g. missing country names) and there could be incorrect values, too, as there are quite a few outliers on the plots. As for some of the boxplots not having box shape but a line, the reason is that the sample does not have enough elements for those categories (e.g. age of 19, student from France)
+***
+
+Our chart here shows that most of the students who did the survey are from Auckland region. There are nowhere near as many students from other regions as from Auckland. Also, there seems to be similar number of males and females from each regions.
+
+```{r, warning=FALSE}
+
+ggplot(data, aes(data$Region, fill = data$Gender))+geom_bar(position = "dodge")+ylab("Counts")+xlab("Region")+theme(axis.text.x  = element_text(angle=90, vjust=0.5))+ggtitle("The Regions Students Come From")+guides(fill=guide_legend(title = "Gender"))
+
+```
+
+
+In this graph, we could see that even though, students go to classes with people with the same age, there are students who started school earlier or later.
+
+```{r}
+ggplot(data, aes(as.factor(data$Age), fill = as.factor(data$Year)))+geom_bar(position = "dodge")+xlab("Age")+ggtitle("Year-Age Graph")+guides(fill=guide_legend(title = "Year"))
+```
+
+
+***
+##Transportation to School (4)
+
+We would like to see which travel method is the most common for students in New Zealand. For that we will use barcharts.
+
+```{r}
+
+transportation <- data %>% mutate(TravelMethodToSchool = fct_explicit_na(TravelMethodToSchool,na_level = "Unknown")) %>% group_by(TravelMethodToSchool) %>% count() %>% arrange(-n)
+
+colnames(transportation) <- c("Method","Counts")
+
+travel_normal <- ggplot(data, aes(x=data$TravelMethodToSchool)) +geom_bar()+theme(axis.text.x  = element_text(angle=90, vjust=0.5))+xlab("Transportation Method")+ylab("Counts")+ggtitle("Most Common Way of Transportation")
+
+travel_year <- ggplot(data, aes(x=data$TravelMethodToSchool, fill = as.factor(Year))) +geom_bar(position = "dodge")
+
+
+transportation <- ggtexttable(transportation, rows = NULL, theme = ttheme("lBlue"))
+plot_grid(travel_normal,transportation)
+```
+
+Based on this sample, motor is the most common way to travel to school for students. Yet, if we break down the data into years, we could also see that students in different years prefer different transportation methods. Year 10 students mostly walk to school, while lower Year students (4-7), they choose motor. It is also interesting to see that buses are not highly prioritized.
+
+
+```{r}
+
+travel_year+xlab("Transportation Method")+ylab("Counts")+ggtitle("Transportation Methods Based on Year")+
+  guides(fill=guide_legend(title = "Year"))
+  
+```
+
+***
+
+##Most Popular Video Games (5)
+
+Without question, kids do play video games, but what is the most popular game for them? Let's have a look.
+
+```{r}
+
+video_games <- data %>% mutate(FavouriteVideoGame = fct_explicit_na(FavouriteVideoGame,na_level="N/A")) %>% mutate(FavouriteVideoGame = fct_lump(FavouriteVideoGame, n=7)) %>% group_by(FavouriteVideoGame)
+
+video_games <- video_games[video_games$FavouriteVideoGame != "N/A",]
+
+plot1 <- ggplot(video_games, aes(x =video_games$FavouriteVideoGame))+ggtitle("Number of People playing Video Games") +geom_bar()+ylab("Counts")+xlab("Video Games")+theme(axis.text.x  = element_text(angle=90, vjust=0.5))
+
+plot2 <- ggplot(video_games, aes(x =video_games$FavouriteVideoGame, fill = Gender)) +geom_bar(position ="dodge")+ylab("Counts")+xlab("Video Games")+theme(axis.text.x  = element_text(angle=90, vjust=0.5))+ggtitle("Number of Male and Female Playing Video Games")
+
+male_vg <- video_games[video_games$Gender == "male",]
+
+
+
+#male play per/year
+plot3 <- ggplot(male_vg, aes(x =male_vg$FavouriteVideoGame, fill= as.factor(Year))) + geom_bar(position="dodge")+ylab("Counts")+xlab("Video Games")+theme(axis.text.x  = element_text(angle=90, vjust=0.5))+ggtitle("Which Games are Popular Amongst Boys Across The Years")+guides(fill=guide_legend(title = "Year"))
+
+
+
+ggarrange(ggarrange(plot1,plot2, ncol=2),plot3, nrow = 2, heights = 2)
+
+stat_videogames <- video_games %>% group_by(FavouriteVideoGame, Gender) %>% count(FavouriteVideoGame, Gender) 
+
+
+
+```
+
+From the first graph, it seems like most of the student do not play any games, but if we break down to genders, we can see that the first bar contains a majority of female students. Boys are way more attached to games (See question 10). So we have a look what games male students play in each Year. 
+
+Since the category *Other* has many different games, we could say that Fortnite is the most popular games for children. At the same time, we also see that Fortnite is played mostly by students from lower years (4-10).
+
+Now we check if aging contribute to less time spent in video games. Based on the two charts, it does not feel like, as students grow older, they play less video games.
+
+
+```{r}
+num_games <- video_games[video_games$FavouriteVideoGame != "Don't Have One" & video_games$FavouriteVideoGame != "N/A",]
+
+no_games <- video_games[video_games$FavouriteVideoGame == "Don't Have One",]
+
+# play games/ age
+p1 <- ggplot(num_games[num_games$Gender == "male",], aes(x = Age)) +geom_bar()+ylab("Counts")+xlab("Age Groups")+ggtitle("Boys Playing Video Games")
+
+#not play/ age
+p2 <- ggplot(no_games[no_games$Gender == "male",], aes(x = Age)) +geom_bar()+ylab("Counts")+xlab("Age Groups")+ggtitle("Boys Not Playing Video Games")
+
+plot_grid(p1,p2)
+```
+
+
+***
+##Right Handedness (6)
+
+We will see if based on the sample, whether the 90% population is right or left handed. Since ambidextrous people are both left and right handed we will add them to the right handed group only. 
+
+With that in mind, we will not use *recode()* to change the value. Also, since there are missing values, we will reduce the sample size by the number of N/A values, so that the 100% of people only contains left and right handed people. In the end, our sample size will be the number of left and right handed as well as twice the ambidextrous people.
+
+```{r}
+
+unique(data$Handedness)
+
+right_hand = nrow(data[(data$Handedness == "right" | data$Handedness == "ambi") & !is.na(data$Handedness),])
+
+
+
+left_hand =nrow(data[(data$Handedness == "left" & data$Handedness != "ambi") & !is.na(data$Handedness),])
+
+
+
+
+table = as.data.frame(matrix(c(left_hand,right_hand), nrow = 1))
+names =c("left hand", "right hand")
+colnames(table) <- names
+rownames(table)<- "count"
+kable(table) %>% kable_styling(full_width = TRUE)
+
+```
+
+```{r}
+temp_data = data[!is.na(data$Handedness),]
+
+ggplot(temp_data, aes(x = temp_data$Handedness))+geom_bar()+xlab("Handedness")+ylab("Counts")+ggtitle("Handedness of The Sample")
+
+
+```
+
+
+Now that we have the number of right handed and left handed as well as the sample size, we can do the hypothesis testing. We will set the significance level to 0.05 ($\alpha$). The following test will see if our sample fit the hypothesized distribution (Goodness of Fit Test).
+
+$H_0$: 90% of people are right handed. That means the proportion of right handed people is 0.9 ($p_1$) and proportion of left handed people is 0.1 ($p_2$).
+
+$H_1$: The alternative hypthesis is that $p_1$ $\neq$ 0.9 and $p_2$ $\neq$ 0.1.
+
+Assumption: $e_{ij}$ = $y_{i*}$$y_{*j}$/$n$ $\geq$ 5
+
+We will conduct the test manually and then using the built-in function for double confirmation.
+
+
+First, we calculate the expected values and see if all of the cells are larger or equal to 5.
+```{r}
+
+#left hand, right hand
+p = c(0.1, 0.9)
+n = left_hand+right_hand
+#expected values
+e = n*p
+
+all(e >= 5)
+t0 = sum((table-e)^2/e)
+```
+Our test statistic
+```{r}
+t0
+
+```
+Our p-value with the degree of freedom of 1, as we did not have to do any estimation and we always lose one.
+```{r}
+pval = 1- pchisq(t0,1)
+pval
+
+
+```
+
+Using the built-in function
+```{r}
+chisq.test(table, p = p)
+```
+
+
+```{r}
+
+pval >= 0.05
+```
+So in the end, our p-value was smaller than $\alpha$, and we wil reject our $H_0$. It means we cannot confirm that 90% of people are right handed.
+
+
+
+***
+##Gender and Handedness (7)
+
+```{r}
+temp_data = data[!is.na(data$Handedness),]
+
+ggplot(temp_data, aes(x = temp_data$Handedness, fill=temp_data$Gender))+geom_bar(position = "dodge")+xlab("Handedness")+ylab("Counts")+ggtitle("Handedness of The Sample")+guides(fill=guide_legend(title = "Gender"))
+
+
+```
+
+Now, we will see whether handedness is independent from gender. We will use independence test as we only use one sample as well as observing two categories. For this test, again, we will do the test manually and compare it with the built-in function.
+
+
+$H_0$: $p_{ij}$ = $p_{i*}p_{*j}$ for $i$ = 1,2 and $j$ = 1,2
+
+$H_1$: $p_{ij}$ $\neq$ $p_{i*}p_{*j}$ for $i$ = 1,2 and $j$ = 1,2
+
+Assumption: $e_{ij}$ = $y_{i*}$$y_{*j}$/$n$ $\geq$ 5
+
+$\alpha$ = 0.05
+
+First we will extract the values to create our table:
+
+```{r}
+
+male_right = nrow(data[data$Gender == "male" & !is.na(data$Handedness) & (data$Handedness == "right" | data$Handedness == "ambi"),])
+
+male_left = nrow(data[data$Gender == "male" & data$Handedness == "left" & !is.na(data$Handedness),])
+
+
+female_right =nrow(data[data$Gender == "female" & !is.na(data$Handedness) & (data$Handedness == "right" | data$Handedness == "ambi"),])
+
+female_left = nrow(data[data$Gender == "female" & data$Handedness == "left" & !is.na(data$Handedness),])
+
+
+gender_table = as.data.frame(matrix(c(female_left, female_right, male_left, male_right) ,nrow = 2, ncol = 2, byrow = TRUE))
+
+colnames(gender_table) <- c("left hand", "right hand")
+rownames(gender_table) <- c("female", "male")
+
+gender_table
+kable(gender_table) %>% kable_styling(full_width = TRUE)
+
+```
+
+
+
+Now we will calculate the expected values for every cell, and see if all of them has a value above/equal 5:
+```{r, warning=FALSE}
+
+r=c= 2
+n = sum(gender_table)
+yr = apply(gender_table, MARGIN = 1, FUN = sum)
+
+
+yc = apply(gender_table, MARGIN = 2, FUN = sum)
+
+yr.mat = matrix(yr, r,c, byrow = FALSE)
+
+yc.mat = matrix(yc,r,c, byrow= TRUE)
+
+ey.mat = yr.mat * yc.mat / n
+colnames(ey.mat) <- c("left hand", "right hand")
+rownames(ey.mat) <- c("female", "male")
+kable(ey.mat) %>% kable_styling(full_width = TRUE)
+all(ey.mat >= 5)
+```
+
+Let's calculate the test statistic
+```{r}
+gender_table-ey.mat
+t0 = sum((gender_table-ey.mat)^2/ey.mat)
+
+t0
+```
+
+Then the p-value with the degree of freedom of 1 again, as we have a 2x2 table and we always loes one:
+
+```{r}
+
+pval = pchisq(t0, (r-1)*(c-1), lower.tail = FALSE)
+pval
+```
+
+Compare it with the built-in function:
+```{r}
+chisq.test(gender_table, correct = FALSE)
+```
+
+It looks like that our p-value is smaller than our significance level. It means we reject $H_0$, the two categories are not independent, and there may be dependency between right-handedness and gender.
+
+***
+##Student with Cellphones (8)
+
+We will analyse whether the proportion of cellphones are the same across year groups in our data. Since we stratified our data based on year, our test will be homogeneity test. Let's get started:
+
+```{r,warning=FALSE}
+
+
+
+ggplot(data, aes(x = data$Year, fill = data$OwnCellPhone))+ geom_bar(position = "fill")+xlab("Year")+ylab("Ratio")+ggtitle("Proportion of People With and Without Cellphone")+guides(fill=guide_legend(title = "Own Cellphone"))
+
+```
+
+So we can clearly see that there are differences across groups, so we should expect similar result in our test hopefully. Now we will do our hypthesis test. Our assumption is that across year groups, the proportion of owning a cellphone is constant. Therefore:
+
+
+$H_0$: $p_{11}$ = $p_{21}$ = $p_{31}$ ...=$p_{12}$ and $p_{22}$ = $p_{32}$= $p_{42}$.....=$p_{102}$
+
+$H_1$: $p_{11}$ $\neq$ $p_{21}$ $\neq$ $p_{31}$ ...$\neq$ $p_{12}$ and $p_{22}$ $\neq$ $p_{32}$ $\neq$ $p_{42}$.....$\neq$ $p_{102}$
+
+Assumption: $e_{ij}$ = $y_{i*}$$y_{*j}$/$n$ $\geq$ 5
+
+$\alpha$ = 0.05
+
+Again, we will do it manually, then verify the result with the built-in function. This is our table:
+
+```{r,warning=FALSE, message=FALSE}
+
+phone_table <- table(data$Year,data$OwnCellPhone)
+kable(phone_table) %>% kable_styling(full_width = TRUE)
+
+
+```
+
+
+Our expected table:
+```{r}
+n = sum(phone_table)
+
+r = nrow(phone_table)
+
+c = ncol(phone_table)
+
+
+row_totals = apply(phone_table, MARGIN = 1,FUN = sum)
+
+col_totals = apply(phone_table, MARGIN = 2,FUN = sum)
+
+
+
+rt = matrix(row_totals, nrow = r, ncol = c, byrow = FALSE)
+ct = matrix(col_totals,nrow = r, ncol= c, byrow = TRUE)
+
+etab = ct * rt / n
+colnames(etab) <- c("no", "yes")
+rownames(etab)<- 4:13
+kable(etab) %>% kable_styling(full_width = TRUE)
+```
+Our  test statistic:
+```{r}
+t0 = sum((phone_table-etab)^2/etab)
+t0
+```
+Our p-value with degree of freedom of 9, since we have 10 rows and two columns.
+```{r}
+pval =1-pchisq(t0,(c-1)*(r-1))
+pval
+
+```
+P-value of built-in function:
+```{r}
+chisq.test(phone_table, correct = FALSE)
+```
+
+
+Our p-value manually was 0 while the function gave us a very small number. With $\alpha$ being 0.05 or even lower, we will reject our $H_0$, therefore, there is no constant proportion across the year groups.
+
+***
+##Beheviour with Cellphone (9)
+
+```{r}
+temp_data = data[data$FeelingWithoutPhoneAnxious != "n/a" & data$CheckMessagesAsSoonAsYouWakeUp != "n/a",]
+
+
+
+ggplot(temp_data, aes(x = temp_data$FeelingWithoutPhoneAnxious, fill = temp_data$CheckMessagesAsSoonAsYouWakeUp))+ geom_bar(position = "dodge")+xlab("Anxeity without Phone")+guides(fill=guide_legend(title = "Check Messages"))+ggtitle("Plot Related to Anxeity and Checking Message")
+```
+
+
+First of all, we will create the table according to our needs.
+
+
+```{r,warning=FALSE, message=FALSE}
+
+hs <- data[data$CheckMessagesAsSoonAsYouWakeUp != 'n/a' & data$Year > 6 & data$Year < 13,]
+hs$CheckMessagesAsSoonAsYouWakeUp <- factor(hs$CheckMessagesAsSoonAsYouWakeUp, levels = c("never", "rarely", "sometimes","often","always"))
+
+hs <- table(hs$CheckMessagesAsSoonAsYouWakeUp,hs$FeelingWithoutPhoneAnxious)
+
+kable(hs) %>% kable_styling(full_width = TRUE)
+
+
+```
+
+```{r}
+r = nrow(hs)
+c = ncol(hs)
+n = sum(hs)
+
+
+yr = apply(hs, MARGIN = 1, FUN = sum)
+yc = apply(hs, MARGIN = 2,FUN = sum)
+yr.mat = matrix(yr, nrow = r, ncol = c,byrow = FALSE)
+yc.mat = matrix(yc, nrow = r, ncol = c,byrow = TRUE)
+
+
+ey.mat = yr.mat * yc.mat / n
+
+kable(ey.mat) %>% kable_styling(full_width = TRUE)
+
+```
+
+Now we want to see if there is any association between anxiety and phone habits in the morning. Due to having cells with value smaller than 5, we will use 3 different methods to conduct our tests: one where we merge the rows together, one with Pearson's Chi-Square Test and with Monte-Carlo simulation. Therefore:
+
+$H_0$: $p_{ij}$ = $p_{i*}p_{*j}$ for $i$ = 1,2,3,4,5 and $j$ = 1,2
+
+$H_1$: $p_{ij}$ $\neq$ $p_{i*}p_{*j}$ for $i$ = 1,2,3,4,5 and $j$ = 1,2
+
+Assumption: $e_{ij}$ = $y_{i*}$$y_{*j}$/$n$ $\geq$ 5
+
+$\alpha$ = 0.05
+
+####1 Collapsing/Merging Rows:
+
+We will merge the first two rows from the original table then create our expected values.
+
+```{r,warning=FALSE, message=FALSE}
+row <-matrix(apply(hs[1:2,], MARGIN = 2,FUN = sum),nrow = 1, ncol= 2)
+
+new_hs <- hs[2:5,]
+new_hs[1,] <- row
+rownames(new_hs) <- c("never/rarely", "sometimes","often","always")
+colnames(new_hs) <- c("no", "yes")
+
+kable(new_hs) %>% kable_styling(full_width = TRUE)
+
+r = nrow(new_hs)
+c = ncol(new_hs)
+n = sum(new_hs)
+
+ey.row <- matrix(apply(ey.mat[1:2,], MARGIN = 2,FUN = sum),nrow = 1, ncol= 2)
+
+ey.mat <- ey.mat[2:5,]
+ey.mat[1,] <- ey.row
+
+rownames(ey.mat) <- c("never/rarely", "sometimes","often","always")
+colnames(ey.mat) <- c("no", "yes")
+```
+
+Our expected values:
+```{r}
+
+kable(ey.mat) %>% kable_styling(full_width = TRUE)
+
+
+
+```
+
+Now that we have the table, we will do the test. Our test statistic and p-value. Remember that the degree of freedom usually is *(r-1)\*(c-1)*, but since we had to merge rows, we also must deduct one more.
+
+```{r}
+
+t0 = sum((new_hs -ey.mat)^2/ey.mat)
+
+pval = pchisq(t0,(c-1)*(r-1)-1 , lower.tail = FALSE)
+
+t0
+pval
+```
+
+
+####2 Pearson's Chi-Square Test:
+
+```{r,warning=FALSE, message=FALSE}
+
+chisq.test(hs,correct = FALSE)
+
+```
+
+
+####3 Monte Carlo p-value
+
+```{r, warning=FALSE, message=FALSE}
+
+rcount = rowSums(hs)
+ccount= colSums(hs)
+B = 10000
+set.seed(123)
+x_list = r2dtable(B,rcount, ccount)
+
+
+
+
+rnd.chisq = numeric(B)
+
+for(i in 1:B){
+  rnd.chisq[i] = chisq.test(x_list[[i]])$statistic
+  
+}
+
+
+par(cex =1.8)
+hist(rnd.chisq, main = "Histogram for Monte-Carlo Simulation", xlab = "Test Statistic", ylab = "Frequency")
+abline(v= t0,col = "blue", lwd = 2)
+text(x = 15, y= 2500,label = "observed test statistic")
+
+
+
+```
+
+As we can see, we have very different results with the 3 methods. The only common thing is that they all larger than $\alpha$, which preserve the $H_0$ hypothesis. We also tried the Monte-Carlo simulation but the p-value is very different from the manual result.
+
+We also have to note that, because our expected values originally were smaller than 5, the built-in function can give us inaccurate result. We also do not want to use the Yate's Correction Chi-Square test since it is applied to 2x2 tables. With Fisher Test, it assumes that the row and column margins are fixed, therefore we will not use it.
+
+About the simulation, our observed test statistic appears quite often in the simulation as it is not too close to the lower tail. We could say that our $t_0$ is a valid value.
+
+##Video Games and Gender (10)
+
+Based on question 5, we saw on the graphs that females play less games compared to males. Now we are going to test the dependence between boys and girls.
+
+
+$H_0$: $p_{ij}$ = $p_{i*}p_{*j}$ for $i$ = 1,2,3,4,5 and $j$ = 1,2
+
+$H_1$: $p_{ij}$ $\neq$ $p_{i*}p_{*j}$ for $i$ = 1,2 and $j$ = 1,2
+
+Assumption: $e_{ij}$ = $y_{i*}$$y_{*j}$/$n$ $\geq$ 5
+
+$\alpha$ = 0.05
+
+```{r}
+
+
+female_play = nrow(data[data$Gender == "female" & data$FavouriteVideoGame != "Don't Have One" & !is.na(data$FavouriteVideoGame) & !is.na(data$Gender),])
+
+
+
+female_not = nrow(data[data$Gender == "female" & data$FavouriteVideoGame == "Don't Have One" & !is.na(data$FavouriteVideoGame) & !is.na(data$Gender),])
+
+
+male_play = nrow(data[data$Gender == "male" & data$FavouriteVideoGame != "Don't Have One" & !is.na(data$FavouriteVideoGame) & !is.na(data$Gender),])
+
+
+
+male_not = nrow(data[data$Gender == "male" & data$FavouriteVideoGame == "Don't Have One" & !is.na(data$FavouriteVideoGame) & !is.na(data$Gender),])
+
+
+table = as.data.frame(matrix(c(female_play, female_not, male_play, male_not), ncol = 2, nrow = 2, byrow = FALSE))
+
+colnames(table) <- c("female", "male")
+rownames(table) <- c("play", "not play")
+kable(table) %>% kable_styling(full_width = TRUE)
+
+```
+Let's see what the built-in function gives us:
+
+```{r}
+chisq.test(table,correct =FALSE)
+```
+
+
+Let's see what result we get if we compute manually:
+```{r}
+r = c = 2
+
+yr = apply(table, MARGIN = 2, FUN = sum)
+yc = apply(table, MARGIN = 1, FUN = sum)
+yr.mat = matrix(yr, r,c, byrow = FALSE)
+yc.mat = matrix(yc, r,c, byrow = TRUE)
+
+ey.mat = yr.mat*yc.mat/ sum(table)
+
+all(ey.mat >= 5)
+
+t0 = sum((table-ey.mat)^2/ey.mat)
+t0
+```
+Our p-value:
+```{r}
+pval = 1-pchisq(t0, 1)
+pval
+
+```
+
+
+As we can see in both way of calculation, the p-value is really small compared to $\alpha$. It means there is evidence against the $H_0$ hypothesis, and we must reject that gender is independent from playing video games. 
+
+
+
+##Limitation of Data (11)
+
+Limitation or possible problem of the dataset could be the following:
+
+- There could be a possible sampling error, where the selected data may not represent the entire population. Even though, the elements were randomly chosen when we downloaded the sample, we must consider the possibility of error in selection.
+
+- The survey had a lot of questions which may lead to difficulty in long concentration or loss of interest. Therefore, we could assume that many of the participants did not answer the survey seriously, and changed the real outcome of the analysis.
+
+- There is a need to mention the missing values within the sample. For example, many students did not answer how many languages they speak (around 164 NA values). This could also lead to a incorrect conclusion. Also, there might be some incorrect values as well, since there were heights that were extreme values compared to their groups.
+
+- As the website stated, schools took the survey voluntarily, which means we don't know what type of school participated (private, public etc.) as well as if the number/type of school and students - who did the survey - can represent the whole population.
+
+##Advanced Question 2
+
+First we will set up our assumptions and other notations we want to use for this proof:
+
+
+$$
+SE(\log{\widehat{(OR)}})= \sqrt{\frac{1}{a}+\frac{1}{b}+\frac{1}{c}+\frac{1}{d}}
+$$
+
+This is going to be our observed values:
+```{r}
+l = as.table(matrix(c("a", "b", "n", "c", "d", "m"),ncol = 3, nrow = 2,byrow = TRUE))
+colnames(l) = c("D+", "D-", "Total")
+rownames(l) = c("R+","R-")
+
+kable(l) %>% kable_styling(full_width = TRUE)
+
+```
+
+
+And this is going to be our proportions:
+```{r}
+t = as.table(matrix(c("p", "1-p", "1", "q", "1-q", "1"),ncol = 3, nrow = 2,byrow = TRUE))
+colnames(t) = c("D+", "D-", "Total")
+rownames(t) = c("R+","R-")
+
+kable(t) %>% kable_styling(full_width = TRUE)
+```
+
+
+We know that the observed odds ratio is:
+
+$$
+\log{\theta} = log{\frac{p/(1-p)}{q/(1-q)}}
+$$
+
+Now, our first assumption we make is that we work with independent groups ($n$ and $m$). Let's plot a simmulation for the log odds ratio:
+
+```{r}
+B = 10000
+sim_test = vector(mode = "numeric", length = B)
+
+for(i in 1:B){
+  p = runif(1,min = 0,max = 1)
+  q = runif(1,min = 0,max = 1)
+  a = (p/(1-p))/(q/(1-q))
+  
+  sim_test[i] = log(a, base = 10)
+  
+}
+
+hist(sim_test, main = "Simulation of Odds Ratio", xlab = "Odds Ratio", ylab = "Ferquency")
+mean(sim_test)
+```
+It seems like the log odds ratio gives us a normal distribution. We will assume that as well from now on, and because of that we will use the Central Limit Theorem which says "that given a distribution with a mean μ and variance σ², the sampling distribution of the mean approaches a normal distribution with a mean (μ) and a variance σ²/N as N, the sample size, increases." (ref: 2)
+
+This also means that as our sample size gets larger, our observed odd ratio gets closer to the real odd ratio. However, there is still a standard error for our value, but at least we can somehow calculate what the the error is.
+
+
+With that in mind, we can estimate the asymptotic variance of odds ratio, and find out the standard error since "the standard error of an estimate may also be defined as the square root of the estimated error variance". To do that, we will the delta method which can be used to obtain large sample data errors by finding out the variance. (ref:3, 5)
+
+It states the following (ref: 5):
+
+If:
+$$
+\frac{\hat{\theta}-\theta}{\hat{SE_\hat{\theta}}} \to N(0,1)
+$$
+
+Then:
+
+$$
+\frac{f(\hat{\theta})-f(\theta)}{f'(\hat\theta)\hat{SE_\hat{\theta}}} \to N(0,1)
+$$
+
+Where in our case, $\theta = \widehat{OR}$, $\hat\theta$ is our true $OR$ without error,$\hat{SE_\hat{\theta}}$ is the sandard error of $\theta$ and $f(x)$ is the log function. It's formula is (ref: 5):
+
+
+$$
+Var[f(X)] = (f'(X))^2*Var[X]
+$$
+
+
+Now that everything is set up, we will put the whole informations together (ref: 6):
+
+
+$$
+Var[\log(\widehat{OR})] = Var[log{\frac{p/(1-p)}{q/(1-q)}}] = Var[log{\frac{ad}{bc}}]=\\
+Var[log{(ab)} - log{(bc)}] = Var[log{(a)}+log{(d)}-log{(b)}-log{(c)}] =\\
+Var[log(a)]+Var[log(b)]+Var[log(c)]+Var[log(d)]\\
+$$
+
+
+The equation above is from the fact that $log{(a/b)}= log{(a)}-log{(b)}$, $log{(ab)}= log{(a)}+log{(b)}$ and that for independent variables, we can rewrite the equation.
+
+
+So if our $log$ function is $e$ based ($ln$), we can derive the function easily (ref: 6):
+
+$$
+Var[log(a)]+Var[log(b)]+Var[log(c)]+Var[log(d)] =\\ (\frac{1}{a})^2*Var[a]+(\frac{1}{b})^2*Var[b]+(\frac{1}{c})^2*Var[c]+(\frac{1}{d})^2*Var[d] = \\
+\frac{1}{a}+\frac{1}{b}+\frac{1}{c}+\frac{1}{d}
+$$
+
+
+And as we stated before, square rooting this would give us the standard error of log odds ratio:
+
+
+$$
+SE(log{(\widehat{OR})})=\sqrt{Var[\log(\widehat{OR})]} = \sqrt{\frac{1}{a}+\frac{1}{b}+\frac{1}{c}+\frac{1}{d}}
+$$
+
+
+##References and Additional Information
+
+- (1) The dataset and more information about it can be found on: https://new.censusatschool.org.nz/
+
+- (2) Central Limit Theorem:http://davidmlane.com/hyperstat/A14043.html
+
+- (3) Standard Error and Variance: http://mathworld.wolfram.com/StandardError.html
+
+- (4) Variance http://www.stat.yale.edu/Courses/1997-98/101/rvmnvar.htm
+
+- (5) Delta Method: http://people.vcu.edu/~dbandyop/BIOS625/lecture_04_new.pdf
+- http://ocw.jhsph.edu/courses/MethodsInBiostatisticsII/PDFs/lecture20.pdf
+- http://biostat.mc.vanderbilt.edu/wiki/pub/Main/Bios311Syllabus2014/240_mantel-haenszel_test_for_common_odds_ratios.pdf
+
+- (6) Reference for the standard error of log odds ratio: https://www.stat.berkeley.edu/~census/oddsrat.pdf
+- https://math.mit.edu/~rmd/650/deltamethod.pdf
+- https://stats.stackexchange.com/questions/359429/does-confidence-interval-for-odds-ratio-assume-log-normal-distribution/359437#359437
+- https://stats.stackexchange.com/questions/266098/how-do-i-calculate-the-standard-deviation-of-the-log-odds?fbclid=IwAR16iTEc1CRh8XlGyWMwbbO1FALvcDOW3mKhO6eoBGxIc4RBh-nmdxRCnzU
+- http://www-ist.massey.ac.nz/dstirlin/CAST/CAST/HestPropn/estPropn3.html
+
+-packages we used:
+  -*knitr* is for knitting text, R code and Latex code into one Html file.
+  
+  -*kableExtra*, *D*, *cowplot* and *gridExtra* are for table formatting and plot formatting.
+  
+  -*ggpubr* is for descriptive statistical functions.
+  
+  -*tidyverse* is for piping and other function helping in data manipulation.
+  
+  -*ggplot2* is for plotting statistical images.
+  
+```{r,warning=F}
+citation("ggplot2")
+citation("ggpubr")
+citation("gridExtra")
+citation("tidyverse")
+citation("knitr")
+citation("cowplot")
+citation("DT")
+
+```
+  
+  
