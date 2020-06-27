@@ -1,0 +1,52 @@
+---
+title: "test"
+author: "mile3901"
+date: "21/05/2020"
+output: html_document
+---
+
+
+```{r}
+library(tuneR)
+library(ggplot2)
+```
+
+
+```{r}
+wave_LRL <- readWave("./group_wave/RLRLLRLLRRRLLLRLRRRR.wav")
+time_LRL <- seq_len(length(wave_LRL))
+
+
+```
+
+```{r}
+plot(time_LRL, wave_LRL@left, type = "l")
+```
+
+```{r}
+eventTime_LRL <- c(22000, 40000, 60000, 80000, 95000,115000,395000,365000,375000,385000,405000,415000,425000,435000,495000,500000,495000,495000,495000,495000)
+eventType_LRL <- c("L","L","R","L","R","R","R","R","L","L","R","R","R","R","R","L","L","L","L","R")
+eventTable_LRL <- data.frame(eventTime_LRL, eventType_LRL)
+
+df <- data.frame(Y = wave_LRL@left, time = time_LRL) 
+class <- rep("none", nrow(df))
+class_time <- rep(NA, nrow(df))
+event_id <- rep(NA, nrow(df))
+
+for (i in 1:nrow(eventTable_LRL)) {
+    t_idx <- (time_LRL < (eventTable_LRL[i, 1] + 5000)) & (time_LRL > (eventTable_LRL[i,1]-5000))
+    
+    class[t_idx] <- ifelse(eventTable_LRL[i, 2] == "R", "right", "left") 
+    class_time[t_idx] <- seq_len(sum(t_idx))
+    event_id[t_idx] <- i
+}
+
+df$class <- factor(class, levels = c("right", "left", "none")) 
+
+df$class_time <- class_time
+df$event_id <- event_id
+
+ggplot(df, aes(x = time, y = Y, col = class, group = 1)) + geom_line() + scale_color_manual(values = c("#E41A1C", "#377EB8", "black")) + theme_bw()
+```
+
+

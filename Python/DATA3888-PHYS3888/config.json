@@ -1,0 +1,12 @@
+{
+  "field": {"numAsteroids": 2, "numWide": 5, "numHigh": 6, "finishLine":  30, "timeStep": 2},
+  "spaceship" : {
+    "x": 320,
+    "y": 535,
+    "width": 60,
+    "length": 65
+  },
+  "width": 800,
+  "length" : 620
+
+}
