@@ -1,0 +1,728 @@
+---
+title: "Brain Box Assignment"
+author: "mile3901"
+date: "3/28/2020"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    toc_depth: 4
+---
+
+```{r, message=FALSE, warning=FALSE}
+library(tuneR)
+library(tidyverse)
+library(cvTools)
+library(devtools)
+library(tsfeatures)
+library(ggplot2)
+library(reshape2)
+library(animation)
+library(png)
+library(caTools)
+library(purrr)
+library(magick)
+library(abind)
+library(gridExtra)
+```
+
+
+***
+#*Description*
+***
+
+
+The purpose of the this project is to develop a model that recognises left and right eye movement using R language. By having a wave file that represents sequence of eye movement, we would like to classify signals based on their characteristics and determine when and to which direction the subject moved their eyes. By using R, we have access to many advanced visualisation tools such as ggplot2, and allow ourselves to write logics that quicken the working process as well as implementing many buil-in functions if necessary.
+
+
+##Our Approach
+
+* First of all, we selected 10 short wave files from the *zoe_spiker* folder with "length" 3. The files are the following (note that the rest are deleted from the folder):
+
+
+```{r, message=FALSE, warning=FALSE}
+
+all_files_short <- list.files("zoe_spiker/Length3/")
+
+wave_file_short <- list()
+
+for(i in all_files_short){
+  wave_file_short <- c(wave_file_short, list(readWave(file.path("zoe_spiker/Length3/",i))))
+  
+}
+
+
+all_files_short
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+wave_label_short <- lapply(strsplit(all_files_short, "_"), "[[", 1)
+wave_label_short <- lapply(wave_label_short, function(x) strsplit(x, "")[[1]])
+
+
+
+```
+
+
+* We also plot these waves to see some behaviour in the signals, and make some assumptions.
+
+    + It seems like left eye movement has a negative signal while right eye movement has a positive spike
+  
+    + Also, we could assume that no eye movement has value 0, but since we have some noise, it could move within a range
+  
+    + The spikes are not very straightforward in a way that a smaller spike is followed by a larger spike
+
+
+```{r, warning=FALSE, message=FALSE}
+
+plots <- list()
+
+for(i in 1: length(wave_file_short)){
+  
+  
+  time = seq_len(length(wave_file_short[[i]]))/wave_file_short[[i]]@samp.rate
+
+  d = data.frame(wave = wave_file_short[[i]]@left, time = time)
+  p <- ggplot(d, aes(x=time, y = wave))+geom_line(colour= "#56B4E9")+xlab("Time")+ylab("Wave")+ggtitle(paste(wave_label_short[[i]],collapse = ""))+theme_classic()
+  plots[[i]] <- p
+}
+
+do.call(grid.arrange, plots)
+```
+
+
+After making some basic assumptions, we will extract the events and classify them with the *identify_event* function (renamed to *identify_eventLab*) to extract events, then label them based on the file names. If that is done, we can start working on our classification model.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results=FALSE, fig.show='hide', include=FALSE}
+identify_eventLab <- function(Y,  xtime, 
+                                windowSize = 1, 
+                                thresholdEvents = 700, ## SD we use 650
+                                downSampleRate = 25) {
+  
+    # Step 1: Accounting for the edge of the sequence, we downsample the sequence and only select every 50 values.
+    x = max(xtime) - windowSize
+    indexLastWindow = max(which(xtime <= x)) + 1
+    ind = seq(1, indexLastWindow, by = downSampleRate)
+
+    # Step 2: Initialize time vector for middle of each window
+    timeMiddle <- xtime[ind] + windowSize/2 
+    testStat = rep(NA, length(ind))
+  
+    # Step 3: Calculate the SD in each window
+    for (i in 1:length(ind)) {
+        Y_subset <- Y[xtime >= xtime[ind[i]] & xtime < xtime[ind[i]] + windowSize]
+       testStat[i] <-  sd(Y_subset)
+##        testStat[i] <-sum(Y_subset[1:(length(Y_subset) - 1)] * 
+##                            Y_subset[2:(length(Y_subset))] <= 0)
+  }
+  
+    # Step 4: Simple threshold rule to determine the event
+    predictedEvent <- which(testStat > thresholdEvents)
+    eventTimes <- timeMiddle[predictedEvent] # map back to the time of this 
+  
+    # step 5: Identifying the noise intervals 
+    gaps <- which(diff(eventTimes) > mean(diff(eventTimes)))
+    noiseInterval <- rbind(
+                c(range(xtime)[1], min(eventTimes)),
+                cbind(eventTimes[gaps], eventTimes[gaps+1]),
+                c(max(eventTimes), range(xtime)[2])
+                )
+    
+    # step 6: eventIntervals 
+    # rearrange the matrix slightly to find the eventIntervals
+    eventsInterval <- cbind(noiseInterval[-nrow(noiseInterval),2], 
+                            noiseInterval[-1,1])
+    
+    return(list(num_event = length(gaps) + 1, 
+           predictedNoiseInterval = noiseInterval,
+           predictedEventInterval = eventsInterval))
+}
+
+
+identify_event <- function(Y, xtime, windowSize = 1, 
+                           thresholdEvent, downSampleRate = 1){
+  
+  
+  x = max(xtime) - windowSize
+  
+  indexLastWindow = max(which(xtime <= x)) + 1
+  ind = seq(1, indexLastWindow, by = downSampleRate)
+
+
+  timeMiddle <- xtime[ind] + windowSize/2 
+  
+  testStat = rep(NA, length(ind))
+  
+  for (i in 1:length(ind)) {
+    
+    Y_subset <- Y[xtime >= xtime[ind[i]] & xtime < (xtime[ind[i]] + windowSize)]
+    testStat[i] <- max(abs(Y_subset))
+       
+  }
+  
+  
+  predictedEvent <- which(testStat >= thresholdEvent*2)
+  eventTimes <- timeMiddle[predictedEvent]
+  
+  gaps <- which(diff(eventTimes) > mean(diff(eventTimes)))
+  noiseInterval <- rbind(
+                c(range(xtime)[1], min(eventTimes)),
+                cbind(eventTimes[gaps], eventTimes[gaps+1]),
+                c(max(eventTimes), range(xtime)[2])
+                )
+  
+  eventsInterval <- cbind(noiseInterval[-nrow(noiseInterval),2], 
+                            noiseInterval[-1,1])
+    
+  return(list(num_event = length(gaps) + 1, 
+           predictedNoiseInterval = noiseInterval,
+           predictedEventInterval = eventsInterval))
+  
+  
+}
+
+extract_signal <- function(limit, seq, xtime){
+  
+  index = (xtime >limit[1]) & (xtime < limit[2])
+  return(seq[index])
+}
+
+
+LRclassify = function(waveseq, sd)
+{
+  
+  maxVal = max(waveseq) 
+  minVal = min(waveseq)
+  call = ifelse(maxVal+minVal < 0, "L", "R")
+  #call = ifelse(maxVal > sd*2, "R", call)
+  
+  if(is.na(call)){
+    call = "N"
+  }
+  
+  return(call)
+}
+
+
+MLfunction <- function(wave, time, sd){
+  
+  
+  cut_result = identify_event(wave, time, 1, sd, 25)
+  
+  signals = apply(cut_result$predictedEventInterval, 1, extract_signal, wave, time)
+  
+  listLR = c()
+  
+  for(j in 1:length(signals)){
+    lr <- LRclassify(signals[[j]], sd)
+    listLR <- append(listLR, lr)
+    
+  }
+  
+  
+  return(listLR)
+  
+}
+
+
+
+getSD <- function(event, selectedNonEvent){
+  
+  SD =c()
+  
+  j = 1
+  
+  for(i in 1:(nrow(event)*2+1)){
+    
+    if(i %% 2 == 1){
+      
+      idx = sample(1:nrow(selectedNonEvent), 1, replace = FALSE)
+      
+      SD = append(SD,selectedNonEvent$value[[idx]])
+      
+    }else{
+      
+      SD = append(SD, event$value[[j]])
+      j = j+1
+      
+    }
+  }
+  
+  
+  return(sd(SD, na.rm = TRUE))
+}
+
+createWave <- function(event,selectedNonEvent){
+  
+  idx = sample(1:nrow(selectedNonEvent), 1, replace = FALSE)
+  
+  wave= c(selectedNonEvent$value[[idx]])
+
+  
+  for(i in 1:nrow(event)){
+    
+    idx2 = sample(1:nrow(selectedNonEvent), 1, replace = FALSE)
+    
+    wave = append(wave, c(event$value[[i]]))
+    wave = append(wave,c(selectedNonEvent$value[[idx]]))
+    
+  }
+  
+  return(wave)
+  
+  
+}
+
+
+accuracy <- function(y_test, result){
+  
+  
+  if(length(y_test) < length(result)){
+    
+    
+    for(i in 1: (length(result)-length(y_test))){
+      
+      y_test = append(y_test, "N")
+      
+    }
+    
+  }
+  
+  if(length(y_test) > length(result)){
+    
+    for(i in 1: (length(y_test)-length(result))){
+      
+      result = append(result, "N")
+      
+    }
+    
+  }
+  
+  acc = 0
+  
+  for(i in 1:length(result)){
+    
+    if(result[i] == y_test[i]){
+      acc = acc+1
+      
+    }
+    
+    
+  }
+  
+  return(round(acc/length(result),2))
+  
+}
+
+```
+
+
+
+
+##Our Model's Concept
+
+
+The given function we used to extract event used a basic treshold and standard deviation to extract the event. However, we will slightly change this function to something that could result in a better performance.
+
+* We will still use standard deviation, but we will calculate the average standard deviation of the 10 files we are working with. This is going to be our treshold.
+
+* After that, with a given training data, we will read the wave in a set length of window, one by one until we reach the end of the wave sequence.
+
+* For each window, we will find the absolute maximum value, and if it is larger than twice the threshold, we will call it an event and record it.
+* With the recorded values, if the absolute maximum value is negative, it  will be a left eye movement. Otherwise it is a right eye movement.
+
+
+The reason behind using this concept is due to the assumption we made before. Assuming that the wave of a non-event with noise moves between 300 and -300 (approximately), and a spike (whether left or right) can go up to 2000 or down to -2000, we can say that a spike could be 2 standard deviation away from the "mean". What we propose is that the natural state of the wave is when the subject is looking forward and the wave moves between 300 and -300.
+
+
+##The Model
+
+To see if our concept is decent, first, we extracted the events and non-events with their labels from the wave files we used and store them into two separate data frames. We also built our own classifier by writing different functions and combine them.
+
+
+```{r, message=FALSE, warning=FALSE,echo=FALSE, results=FALSE, fig.show='hide', cache=TRUE}
+dfEvent = data.frame(matrix(ncol = 2))
+colnames(dfEvent) <- c("value", "label")
+
+
+
+
+
+for(i in 1:length(wave_file_short)){
+  
+  wave_file = wave_file_short[[i]]
+  Y = wave_file@left
+  xtime = seq_len(length(wave_file))/wave_file@samp.rate 
+  cut_result = identify_eventLab(Y, xtime)
+  
+  signals = apply(cut_result$predictedEventInterval, 1, FUN = function(x) extract_signal(x,Y, xtime))
+
+  
+  
+  for(j in 1:length(signals)){
+    
+    dfEvent = rbind(dfEvent, list(value =signals[j], label = wave_label_short[[i]][j]))
+    
+  }
+  
+  
+}
+
+dfEvent = na.omit(dfEvent)
+dfEvent = dfEvent[!is.na(dfEvent$value),]
+
+
+
+
+
+
+
+
+
+```
+
+
+
+```{r, message=FALSE, warning=FALSE,echo=FALSE, results=FALSE, fig.show='hide', cache=TRUE}
+
+
+dfNonEvent = data.frame(matrix(ncol = 2))
+colnames(dfNonEvent) <- c("value", "label")
+
+for(i in 1:length(wave_file_short)){
+  
+  wave_file = wave_file_short[[i]]
+  Y = wave_file@left
+  xtime = seq_len(length(wave_file))/wave_file@samp.rate 
+  cut_result = identify_eventLab(Y, xtime)
+  
+  nonevent = apply(cut_result$predictedNoiseInterval, 1, FUN = function(x) extract_signal(x,Y, xtime))
+
+  
+  
+  for(j in 1:length(nonevent)){
+    
+    dfNonEvent = rbind(dfNonEvent, list(value =nonevent[j], label = "N"))
+    
+  }
+  
+  
+}
+
+
+dfNonEvent = na.omit(dfNonEvent)
+dfNonEvent = dfNonEvent[!is.na(dfNonEvent$value),]
+
+
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE,echo=FALSE, results=FALSE, fig.show='hide'}
+set.seed(123)
+
+idxEvent = sample(1:nrow(dfEvent) ,replace = FALSE)
+idxNonEvent = sample(1:nrow(dfNonEvent), replace = FALSE)
+
+
+
+selectedEvent = dfEvent[idxEvent,]
+selectedNonEvent = dfNonEvent[idxNonEvent,]
+y = selectedEvent %>% select(label) %>% pull()
+
+
+n = nrow(selectedEvent)
+
+K = 5
+
+
+```
+
+
+Then we could run 5-fold cross validation (CV) 50 times to observe the accuracy of the model:
+
+* We will separate the events that we store in a table into 5 groups randomly. 1 will be the test set and the other 4 are the training data.
+
+* We create 1 big wave with noise (non-event waves) from the training data, and 1 big wave with noise from the test data (basically combining events with non-events randomly).
+
+* Calculate the standard deviation of the waves created from the training data set, and using that as a treshold, we can run our classification.
+
+* Window by window, we will see if there is a spike in the wave created from the test data by comparing the absolute maximum value of the window with the standard deviation. Then we can determine the labels.
+
+* In the end, we compare the predicted result with the original labels of the test set. The accuracy measurement is the follwing:
+
+    + Left eye movement has a label "L", Right eye movement has a label "R" and no even has a label "N".
+  
+    + We will match the length of the prediction labels or the test labels by filling out the labels with "N". For example if our model predicted 4 events and the original test labels record 5 events, we will add "N" to the end of the predicted event.
+  
+    + That means, While the test has 5 events, for the 5th event our model predicts a non-event.
+  
+    + After that we can compare the labels and check the accuracy.
+  
+Naturally, this is just one iteration of  CV, and we need to do it 5 times. After that, we also need to repeat CV 50. Below, you can read the code for performance test:
+
+```{r, message=FALSE,warning=FALSE, cache=TRUE}
+set.seed(124)
+
+rep = 50
+repeatedAcc = matrix(nrow = rep ,ncol = K)
+
+
+
+
+for(i in 1:rep){
+  cvSets = cvTools::cvFolds(n, K)
+  accuracyCV = c()
+  
+  for(j in 1:K){
+    
+    test_id = cvSets$subsets[cvSets$which == j]
+    X_test = selectedEvent[test_id, ]
+    X_train = selectedEvent[-test_id, ]
+    y_test = y[test_id]
+    y_train = y[-test_id]
+    
+    #created wave for test set
+    newWave = createWave(X_test, selectedNonEvent)
+    time = seq_len(length(newWave))/wave_file_short[[2]]@samp.rate
+    
+    #create a wave and calculate standard deviation
+    sd = getSD(X_train, selectedNonEvent)
+    
+    #run the classification
+    result = MLfunction(newWave, time, sd)
+    
+    #compare accuracy
+    acc = accuracy(y_test, result)
+    
+    #store accuracy
+    accuracyCV = append(accuracyCV, acc)
+
+  
+  }
+  repeatedAcc[i,] = accuracyCV
+ 
+}
+
+
+```
+
+
+
+
+
+
+
+```{r, message=FALSE, warning=FALSE}
+
+
+
+boxplot.matrix(repeatedAcc,use.cols = FALSE, main="Boxplot For Model's Performance", xlab ="Repition of CV", ylab="Accuracy", col ="#add8e6")
+meanAcc <- apply(repeatedAcc,1,mean)
+overallAcc <- mean(apply(repeatedAcc,1, mean))
+```
+
+
+
+Looking at the plots, we can see the distribution of accuracy for our classification. The overall mean accuracy is `r overallAcc`, which means we have a 70% accuracy. We can also see how big the spread can be after performing CV 50 times. There are times where we have above 50% error and times where we have a 100% success. What could be the reason? We will discuss it later on.
+
+
+```{r, message=FALSE, warning=FALSE}
+
+boxplot(meanAcc, horizontal = TRUE, main="Distribution of Average Accuracy",xlab="Accuracy",col ="#add8e6")
+
+
+
+
+```
+
+
+
+
+##Our Model With Streaming Data
+
+
+Below, we also created the same classification but adjusting to live data. To demostrate how the model would work, we used the *zoe_spiker/Length3/LRL_z.wav* as an example.
+
+```{r, message=FALSE, warning=FALSE}
+
+
+
+
+wave_LRL <- readWave("zoe_spiker/Length3/LRL_z.wav")
+time_LRL <- seq_len(length(wave_LRL@left))/wave_LRL@samp.rate
+
+
+eventTime_LRL <- c(1, 3.2, 5.7)
+eventType_LRL <- c("L", "R", "L")
+eventTable_LRL <- data.frame(eventTime_LRL, eventType_LRL)
+
+
+df <- data.frame(Y = wave_LRL@left, time = time_LRL)
+
+class <- rep("none", nrow(df))
+class_time <- rep(NA, nrow(df))
+event_id <- rep(NA, nrow(df))
+for (i in 1:nrow(eventTable_LRL)) {
+  t_idx <- (time_LRL < (eventTable_LRL[i, 1] + 0.5)) & (time_LRL > (eventTable_LRL[ i,1]-0.5))
+  class[t_idx] <- ifelse(eventTable_LRL[i, 2] == "R", "right", "left")
+  class_time[t_idx] <- seq_len(sum(t_idx))
+  event_id[t_idx] <- i
+}
+df$class <- factor(class, levels = c("right", "left", "none"))
+df$class_time <- class_time
+df$event_id <- event_id
+
+ggplot(df, aes(x = time, y = Y, col = class, group = 1)) + geom_line() + scale_color_manual(values = c("#E41A1C", "#377EB8", "black"), name="Event") + theme_bw()+ggtitle("Zoe LRL Wave")+xlab("Time")+ylab("Wave")
+
+```
+
+
+
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+
+
+sd = c()
+
+for(i in wave_file_short){
+  
+  sd = append(sd,sd(i@left))
+  
+  
+}
+sd = round(mean(sd),2)
+```
+
+With the files we worked previously, we calculated the standard deviation and set it as our treshold (`r sd`). The gif below, demonstrate how the model would work when we try to read the live data. As we can see, the model did not return great result, but why?
+
+
+```{r, warning=FALSE, message=FALSE,cache =TRUE}
+
+
+data = data.frame(wave = wave_LRL@left, time = time_LRL, colour = rep("green", length(wave_LRL@left)))
+data$colour <- factor(data$colour, levels = c("blue", "red", "green"))
+
+
+
+dir.create("images")
+
+windowsize = 0.5
+x = max(data$time) - windowsize
+indexLastWindow = max(which(data$time <= x)) + 1
+ind = seq(1, indexLastWindow, by = 25)
+
+fileName <- c()
+j = 1
+
+for(i in 1:length(ind)){
+  
+
+  Y <- data$wave[data$time >= data$time[ind[i]] & data$time < (data$time[ind[i]] + windowsize)]
+  time = data$time[data$time >= data$time[ind[i]] & data$time < (data$time[ind[i]] + windowsize)]
+  
+  colour = "green"
+  
+  if(max(abs(Y)) > 2*sd){
+    
+    lr = LRclassify(Y,sd)
+    
+    colour = ifelse(lr == "R", "red", "blue")
+    
+    
+  }
+  
+  
+  data$colour[data$time >= data$time[ind[i]] & data$time < (data$time[ind[i]] + 1)] = colour
+  
+  data2 = data[data$time < (data$time[ind[i]] + 1),]
+  #print(nrow(data2))
+  p = ggplot(data2,aes(x=time, y =wave))+geom_line(aes(colour=colour, group=1))+theme_classic()+ggtitle("Animation For Model Performance With Live Data")+scale_color_hue(labels = c('blue' = 'left', 'green' = 'none', 'red' ='right'), name ="Events")
+  
+  
+  
+  if(i %% 150 == 0){
+    ggsave(paste("images/plot",i, ".png", sep=""), p)
+    fileName[j] = paste("images/plot",i, ".png", sep="")
+    j= j+1
+  }
+  
+}
+
+
+imgs <- fileName
+png = map(imgs, image_read)
+im = image_join(png)
+
+animation <- image_animate(im, fps = 1)
+
+
+image_write(animation, "animation.gif")
+
+animation
+```
+
+
+***
+#Finding
+***
+
+
+Having a 70% accuracy is fairly decent, but there are many way to improve or create a better model. We will discuss what information we missed or assumptions we could make. We can talk about the shortcoming of our model or how this project could be implemented or developed even further for the use of society.
+
+
+##Data
+
+One of the important imformation we missed about the data we used is how reliable and in what circumstances the data was made. What was the rule of looking left and right if there was any? Can we constantly switch between looking at the left and right? Can we keep looking to the right? Are we allowed to move our head? What happens if we are short sighted?
+
+These are simple questions that could make significant effect on our classification. If there is no noise between events, we might want to change our model. We could decide on the time window we read the wave. But we could also use a completely different concept like Random Forest or KNN.
+
+We also have to ask if there is any mislabelling in the data. In this project, we did not deal with mislabelling and it could also impacted the performance. A right eye movement could be labelled as left or a small spike could be an event.
+
+To eliminate mislabelling, the simplest way is to relabel them manually, but with large data, it would be time consuming. Another way to deal with incorrect and missing labels is using semi-supervised learning. We could use AdaSampling or Boostrap method to assign labels. We could also change the way we calculate accuracy if we can detect missing/incorrect labels.
+
+At the same time, we could come up with some logic that find incorrect labels based on certain characteristics. For example, for each right eye movement event (RE) we compare the value with the rest of the RE values (e.g. mean, median etc.) and if there is a big enough difference, we can mark it as mislabelled or add label to it in case it is missing. So when we run the classification, we punish the model less in case it could not give us the same result as the given label.
+
+##Disadvantage of The Model
+
+As we mentioned before, this classifier is not the best way to recognise eye movements. It is affected by incorrect data, unusual eye movements and unusual waves. That is just some of the reasons we only have a decent accuracy.
+
+By observing the graphs, for instance, the left/right eye movements have two spikes - 1 smaller following by a larger spike. With this, if we have to read the data live (just like in the GIF file), reading in a certain window, the model could claim there are two events instead of one.
+
+Another question is whether our model is affected by the length of the wave sequence. Since we are using standard deviation to classify the different waves, rather than length, we care more about the quality of the wave. If we do not have noise and constantly looking left and right, the standard deviation could be different. While if we have a predefined standard deviation, no matter how long the sequence is, the result should be the same.
+
+We could also argue that our threshold is significantly incorrect, and our data that we calculated it from is a small sample size. There is also the running time of the algorithm: it runs very slowly when we only use 10 files, so how much time would we wait for a larger data?
+
+##Practicality
+
+This classifier, although seem insignificant, could provide a stepping stone to improve the life of others. Many people with disability are unable to use cell phone or any tech devices, but since we are living in the 21th century, this could change. In the future (or right now in the present), phones could be activated and users could scroll pages just by moving their eyes.
+
+It could be an effective way to communicate with people who are unable to speak. Eye movements are also sign of certain behaviours. With the recorded signals, we could predict emotions or simple thing like whether someone tries to cheat during an exam.
+
+
+***
+#How To Run The Rmd File
+***
+
+
+* Note that many functions or code implemented are from DATA3888 labs.
+
+* Please make sure to install the packages that are listed on the top of the page.
+
+* A zip file will be attached. Please unzip it in the same folder as the Rmd file. Use it as knitting the file takes more than 1 hour.
+
+* When running the Rmd file, keep *zoe_spiker* folder in the same directory as the Rmd file.
+
+* Remove the file from the *zoe_spiker/Length3* folder that were not used (check at the top of the page).
+
+* Make sure *LRL_z.wav* file is in the folder as it was a file used for demostration.
