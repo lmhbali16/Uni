@@ -18,9 +18,7 @@ The map off the game only shows up if "board" is typed in to the terminal.
 * It also shows the destination and current poistion @ &
 * And possible points to pick up 1-9
 
-![alt text]
-(lmhbali16.github.com//Uni/Java/MazeGame1.png)
+![alt text](MazeGame1.png)
 
-![Image of MazeGame2]
-(https://github.com/lmhbali16/Uni/blob/master/Java/MazeGame2.png)
+![Image of MazeGame2](MazeGame2.png)
 
