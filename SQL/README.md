@@ -1,4 +1,4 @@
-#Sydney Cyclability Score
+# Sydney Cyclability Score
 
 This project aim's is to observe how bicycle friendly each Sydney surburb are. Two dataset were provided: one containing features of Sydney suburbs such as number of bike station or number of parks; and another dataset containing the geographic coordinates of those suburbs from the Bureau Statistics website.
 
