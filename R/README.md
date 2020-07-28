@@ -1,10 +1,12 @@
-These are the projects I have done in DATA1001 and DATA2902
+# R projects in First and Second Years
+
+These are the projects I have done in first and second years
 
 To view the html files created by the rmd files, please open the following webpage on a new tab:
 
 1. http://htmlpreview.github.io/
 
-2. choose an html file and click on it
+2. choose an html file from the HTML folder and click on it
 
 3. copy the URL
 
