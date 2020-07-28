@@ -19,7 +19,6 @@ The map off the game only shows up if "board" is typed in to the terminal.
 * And possible points to pick up 1-9
 
 ![Image of MazeGame1]
-
 (Java/MazeGame1.png)
 
 ![Image of MazeGame2]
