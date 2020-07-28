@@ -18,7 +18,7 @@ The map off the game only shows up if "board" is typed in to the terminal.
 * It also shows the destination and current poistion @ &
 * And possible points to pick up 1-9
 
-![alt text](MazeGame1.png)
+![Image of MazeGame1](MazeGame1.png)
 
 ![Image of MazeGame2](MazeGame2.png)
 
