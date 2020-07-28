@@ -20,7 +20,7 @@ The map off the game only shows up if "board" is typed in to the terminal.
 
 ![Image of MazeGame1]
 
-(https://github.com/lmhbali16/Uni/blob/master/Java/MazeGame1.png)
+(Java/MazeGame1.png)
 
 ![Image of MazeGame2]
 
