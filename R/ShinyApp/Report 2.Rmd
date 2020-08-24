@@ -1,0 +1,178 @@
+---
+title: "Report 2"
+author: "mile3901"
+date: "26/04/2020"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    toc_depth: 4
+---
+
+```{r, warning=FALSE, message=FALSE}
+library(GEOquery)
+library(R.utils)
+library(reshape2)
+library(ggplot2)
+library(limma)
+library(dplyr)
+
+```
+
+***
+#Introduction
+***
+
+In this project, we are going to observe how the Random Forest classification model performs on an RNA-sequence dataset. We are going to use the RNA-sequence dataset from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120396 to predict patient outcome in kidney transplantation. With the data and the *randomForest* package, we will perform a repeated cross-fold validation to see how accurately the model can predict transplant rejection.
+
+This report will give a guidance on the basic codes on how to create such model and also ellaborate on the process with example. However, performance is dependent on many factors, hence a shiny application is created in order to observe how the Random Forest model is affected by changes. Whether the performance gets better if more trees are created or less variables are chosen. People will be able to compare different Random Forest models and visualise results. With this, we can understand the performance of the model in a deeper manner.
+
+
+
+```{r, warning=FALSE, message=FALSE}
+datadir = "data/GSE120396_RAW/"
+
+# Read in the files
+fileNames <- list.files(datadir)
+
+
+
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+gse = c()
+for(i in 1:length(fileNames)){
+  temptable <- read.delim(file.path(datadir, fileNames[i]), header=TRUE)
+  gse <- cbind(gse, temptable[,2])
+  colnames(gse)[i] <- colnames(temptable)[2]
+}
+
+rownames(gse) = read.delim(file.path(datadir, fileNames[1]), header=TRUE)[,1]
+write.csv(gse, "GSE120396_expression_matrix.csv")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+kidney_data = read.csv("GSE120396_expression_matrix.csv")
+rownames(kidney_data) <- kidney_data[,1]
+kidney_data = kidney_data[,2:length(kidney_data)]
+
+numGene = dim(kidney_data)[1]
+numPa = dim(kidney_data)[2]
+
+
+```
+
+The data contains `r numGene` gene expression for every patients and so for `r numPa` number of patients. We are going to visualise the data in order to see if there is any unusual pattern as well as have a look at the label ratio. This is somewhat important as we want to avoid outliers or bias in our models.
+
+##Normality:
+
+```{r, warning=FALSE, message=FALSE}
+p <- ggplot(melt(kidney_data), aes(x=variable, y=value)) +  
+  geom_boxplot(outlier.colour="black", outlier.shape=16,
+             outlier.size=0.5, notch=FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs (x = "patient", y = "expression value") + theme_minimal()+ggtitle("Boxplot of Gene Expression")
+p
+```
+```{r, warning=FALSE, message=FALSE}
+summary(kidney_data[,1])
+```
+
+
+##Labels:
+
+```{r, warning=FALSE, message=FALSE}
+clinical_outcome <-getGEO("GSE120396")
+clinical_outcome<- clinical_outcome$GSE120396_series_matrix.txt.gz
+
+rejection_status  <- clinical_outcome$characteristics_ch1.1
+rejection_status <- unlist(lapply( strsplit(as.character(rejection_status), ": " ) , `[[` , 2)  )
+table(rejection_status)
+
+```
+
+
+As we can see, there is no missing values in the data and it seems like the ratio of non-rejected and rejected labels are not too significant to consider the dataset imbalanced. Also, based on our plot adn statistics, there is no need for normalisation or transformation.
+
+
+
+
+#Methodology
+
+* we will use the *cvTools* and *RandomForest* packages to create our model and evaluate the accuracy.
+
+* dataset will be randomly split into training and test sets in 4:1 ratio where we use 25% of the data as test set.
+
+* The model we are going to use is Random Forest that select a combination of 100 genes out of `r numGene` to create trees. For each iteration we will create 250 trees and each tree will select 100 variables randomly. Based on these trees, prediction will be made by averaging the individual results.
+
+* We will repeat the performance test 50 times using 5-cross fold validation. Performance will also be visualised to make conclusion.
+
+#Evaluation
+
+```{r, warning=FALSE, message=FALSE, cache=TRUE}
+X = as.matrix(t(kidney_data))
+y = rejection_status
+
+K = 5
+n = 50
+
+result = c()
+
+for(i in 1:n){
+  
+  cvSets = cvTools::cvFolds(nrow(X), K)  # permute all the data, into 5 folds
+  cv_acc =  c()
+  
+  for(j in 1:K){
+    
+    test_id = cvSets$subsets[cvSets$which == j]
+    X_test = X[test_id, ]
+    X_train = X[-test_id, ]
+    y_test = y[test_id]
+    y_train = y[-test_id]
+    
+    rf_res <- randomForest::randomForest(x = X_train, y = as.factor(y_train), mtree = 250, mtry = 100)
+    fit <- predict(rf_res, X_test)
+    cv_acc[j] = table(fit, y_test) %>% diag %>% sum %>% `/`(length(y_test))
+    
+  }
+  
+  result <- append(result, mean(cv_acc))
+  
+}
+boxplot(result, main = "Performance of Model", xlab="Random Forest",ylab="Accuracy")
+```
+
+As we can see our model has around 70% accuracy. You can also check performance by using Shiny App. To access the app go to the repository: https://github.sydney.edu.au/mile3901/ShinyApp.
+
+This app allows you to compare two Random Forest classification performance, and adjust the number of trees you want to create, number of variables you want to include as well as the number of trials you want to repeat. Use it for better understanding of Random Forest.
+
+
+
+#Result
+
+ This work shows that it is important to consider many factors - such as number of trees created in Random Forest or repition - to make better judgement on how a machine learning algorithm performs in any condition. Using the shiny app, we could also see that vairable selection, data and many other factors are crucial to increase the accuracy of our prediction, and although we can see that the classification works, there can be many questions with machine learning algorithms that may not persuasive enough to implement it everywhere.
+ 
+* Depending on the number of trees we create, performance could be affected. Yet resources may not allow as to create enough trees (e.g. hardware limitation) or defining the number of trees could be challenging.
+
+* Selecting variables are important. Not only what features we should select, but how many. We could under and overfit our model. On top of that, features are randomly selected, hence, the machine learning model could perform worse with meaningless features.
+
+* Random Forest involves bootstrap subsampling in order to create trees which laso means, the model could be impacted by imbalance dataset or not having sufficient sample size. Also, with random sampling, we could exclude certain groups of features.
+
+* This model is also incredibly time consuming. Assuming we have a larger dataset, the model would need a lot of time to be trained.
+
+Obviously, there could be many other problems as well but our aim was to point out some that is worth considering when working with AI or ML. As to how to solve these issues, there are many ways. 
+
+* We could rank genes with differential expression analysis, for example, to eliminate some genes.
+
+* For faster calculation, we could figure out how to use multiple CPU and do parallel coding.
+
+* There is a valid reason to try different algorithms like SVM or KNN as we do not know how they do compared to Random Forest
+
+* We could also work with different dataset that has a closer ratio of rejected and non-rejected labels, since this data had more non-rejected sample. That could change our accuracy.
+
