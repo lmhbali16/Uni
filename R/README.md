@@ -1,6 +1,6 @@
 # R projects in First and Second Years
 
-These are the projects I have done in first and second years
+These are the projects I have done in first, second and third years
 
 To view the html files created by the rmd files, please open the following webpage on a new tab:
 
