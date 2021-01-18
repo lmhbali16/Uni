@@ -1,10 +1,10 @@
 # Java projects in first year
 
-This folder have two basic projects done in first year:
+This folder have two basic projects done in my first year of university:
 
 1. Phone software
 
-This phone "software" in the Phone folder is a program that imitate the basic functionality of a phone. This could be turning on and off the phone, showing battery life or having a dummy app.
+This phone "software" in the Phone folder is a program that imitate the basic functionality of a phone. This could turn on and off the phone, showing battery life or having a dummy app.
 
 2. MazeGame
 
