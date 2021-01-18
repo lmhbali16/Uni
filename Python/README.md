@@ -24,3 +24,7 @@ This is my first game in Python, written in my first semester of university. It 
 4. Vehicle
 
 This is a data analysis project where we observed the the cause and circumstances of vehicle accidents in the US and Australia. The project was done in Excel and Python where we cleaned the dataset analysed them separately and also compared the two nations. For more information, read the reports of the analysis.
+
+5. Intro to AI
+
+This contains some basic classifiers (e.g. KNN, Naive Bayes) I wrote to classify diabetes females using the Pima Indians Diabetes dataset. I also compared my written algorithms with the classifiers provided by Weka software.
